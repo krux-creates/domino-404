@@ -495,17 +495,17 @@ const frontTex = label((g) => {
   g.fillText('HOME', 520, LABEL_PX / 2 + 108);
 });
 const backTex = label((g) => {
-  const base = LABEL_PX - 62;
-  g.font = '500 118px "JetBrains Mono", monospace';
-  g.letterSpacing = '6px';
-  g.fillText('TAKE ME', 50, base - 200);
-  g.font = '800 236px "Bricolage Grotesque", sans-serif';
-  g.letterSpacing = '-10px';
+  const base = LABEL_PX - 56;
+  g.font = '500 128px "JetBrains Mono", monospace';
+  g.letterSpacing = '8px';
+  g.fillText('TAKE ME', 52, base - 212);
+  g.font = '800 262px "Bricolage Grotesque", sans-serif';
+  g.letterSpacing = '-11px';
   g.fillText('HOME', 42, base);
   // a drawn arrow after the word: the glyph comes out hairline at this size
-  const s = 112, x = Math.min(42 + g.measureText('HOME').width + 64, 1040 - 50 - s);
+  const s = 124, x = Math.min(42 + g.measureText('HOME').width + 70, 1040 - 50 - s);
   g.strokeStyle = '#EFEAE0';
-  g.lineWidth = 28;
+  g.lineWidth = 31;
   g.lineCap = 'square';
   g.beginPath();
   // ↙: once it lands, the sign points down at the Back to home button under the 404
