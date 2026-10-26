@@ -1,5 +1,9 @@
 # Domino 404
 
+**Live: [domino-404.vercel.app](https://domino-404.vercel.app)** (any wrong path there shows it too)
+
+![The 404 in rainbow wooden dominoes, half of them fallen](media/preview.jpg)
+
 A 404 page where the "404" is a run of rainbow wooden dominoes. Push the first block and the
 chain runs through the 4, round the 0, on through the second 4 and into a sign that falls face up
 reading **TAKE ME HOME ↙**, a link home. You can also push any block, flick one in any direction,

@@ -2,3 +2,5 @@
 .vercel
 .env*.local
 qa/out/
+.env*
+dist/

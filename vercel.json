@@ -1,4 +1,5 @@
 {
-  "cleanUrls": true,
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "buildCommand": "mkdir -p dist && cp index.html og.jpg dist/ && cp index.html dist/404.html",
+  "outputDirectory": "dist",
+  "cleanUrls": true
 }
