@@ -56,8 +56,7 @@ the centred stack).
 ## How it works
 
 - **Layout.** Each stroke of the 404 is a curve (lines, Béziers, an ellipse) sampled every 0.55
-  domino heights, with each domino facing along the curve. This is the method in
-  [manthrax's dominoes](https://manthrax.github.io/dominos/index.html).
+  domino heights, with each domino facing along the curve. 
 - **Junctions.** Where a run meets the side of another (the 4's corner, its bar meeting the stem,
   the way into the 0 and the branch out of it), the falling domino passes beside the next one
   rather than hitting it square. These links are marked `assist`: the page gives the branch a tap
