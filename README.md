@@ -90,8 +90,7 @@ the centred stack).
 ## Research and references
 
 - Their reference: rainbow wooden domino blocks (Google Images, "dominoes blocks game").
-- Domino builds: [manthrax](https://manthrax.github.io/dominos/index.html) (curve sampling,
-  instancing, fall detection by up vector, reset), [Topple](https://topplegame.com/) (Three.js,
+- Domino builds: [Topple](https://topplegame.com/) (Three.js,
   recorded wood clacks), the [Rapier dominoes lesson](https://www.educative.io/courses/learn-threejs-for-computer-graphics/simulating-dominos-in-rapier).
   I found no existing domino 404.
 - Layout and type: Mobbin 404s from Fiasco (huge numerals, quiet corner links), Pentagram,
