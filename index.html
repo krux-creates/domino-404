@@ -1,0 +1,1635 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>404 · This page toppled over</title>
+<meta name="description" content="Error 404. This page toppled over: push the dominoes and follow the run home.">
+<meta name="theme-color" content="#EFEAE0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F1EBDD;
+    --ink: #1F1B16;
+    --muted: #5F574C;
+    --line: rgba(31, 27, 22, .18);
+    --red: #E63B2E;
+    --red-deep: #C8321F;
+    --pad: clamp(18px, 3vw, 40px);
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    font-optical-sizing: auto;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; opacity: 0; transition: opacity .5s ease; }
+  #scene.on { opacity: 1; }
+
+  /* Minimal: the dominoes are the hero. One centred caption sits under them, placed by the
+     camera fit; everything else is small mono type in the corners. */
+  .ui {
+    position: fixed; inset: 0; pointer-events: none;
+    --t: max(var(--pad), env(safe-area-inset-top)); --r: max(var(--pad), env(safe-area-inset-right));
+    --b: max(var(--pad), env(safe-area-inset-bottom)); --l: max(var(--pad), env(safe-area-inset-left));
+  }
+  .ui a, .ui button { pointer-events: auto; }
+  .label {
+    font: 500 12px/1.3 "JetBrains Mono", ui-monospace, monospace;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+  }
+  .corner { position: absolute; left: var(--l); right: var(--r); display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+  .top { top: var(--t); }
+  .bottom { bottom: var(--b); }
+  .bottom { justify-content: flex-end; }
+  .sound { background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; }
+  .sound:hover { color: var(--ink); }
+
+  .caption {
+    position: absolute; left: 50%; top: 64%; transform: translateX(-50%);
+    width: min(520px, calc(100% - 2 * var(--pad)));
+    display: grid; justify-items: center; text-align: center;
+    opacity: 0; transition: opacity .4s ease;
+  }
+  .caption.placed { opacity: 1; }
+  /* Frosted glass behind the caption and the corner labels. Over the plain paper it can't be
+     seen; a marble that rolls underneath softens into a blur instead of cutting through the text. */
+  .caption::before, .corner::before {
+    content: ""; position: absolute; z-index: -1; pointer-events: none;
+    -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px);
+  }
+  .caption::before {
+    inset: -48px -90px;
+    -webkit-mask-image: radial-gradient(closest-side, #000 45%, rgba(0, 0, 0, .5) 72%, transparent); mask-image: radial-gradient(closest-side, #000 45%, rgba(0, 0, 0, .5) 72%, transparent);
+  }
+  .corner { isolation: isolate; }
+  .top::before { inset: calc(-1 * var(--t)) calc(-1 * var(--r)) -22px calc(-1 * var(--l)); -webkit-mask-image: linear-gradient(#000 55%, transparent); mask-image: linear-gradient(#000 55%, transparent); }
+  .bottom::before { inset: -22px calc(-1 * var(--r)) calc(-1 * var(--b)) calc(-1 * var(--l)); -webkit-mask-image: linear-gradient(transparent, #000 45%); mask-image: linear-gradient(transparent, #000 45%); }
+  h1 {
+    margin: 0; font-weight: 600; font-variation-settings: "wdth" 92;
+    font-size: clamp(24px, 2.4vw, 36px); line-height: 1.08; letter-spacing: -.025em; text-wrap: balance;
+  }
+  .caption p { margin: 10px 0 0; font-size: 15px; line-height: 1.5; color: var(--muted); text-wrap: balance; }
+  .cta { margin-top: 22px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+  .home, .ghost {
+    font: 500 15px/1 "Bricolage Grotesque", system-ui, sans-serif; letter-spacing: -.005em;
+    border-radius: 999px; padding: 13px 20px; text-decoration: none; cursor: pointer;
+    transition: background-color .2s ease, border-color .2s ease, color .2s ease;
+  }
+  .home { color: var(--paper); background: var(--ink); border: 1px solid var(--ink); }
+  .home:hover, .home.arrived { background: var(--red-deep); border-color: var(--red-deep); color: #fff; }
+  .ghost { color: var(--ink); background: transparent; border: 1px solid var(--line); }
+  .ghost:hover { border-color: var(--ink); }
+  .ghost[hidden] { display: none; }
+  .ghost:not([hidden]) { animation: appear .42s cubic-bezier(.22, .8, .24, 1) both; }
+  @keyframes appear { from { opacity: 0; transform: translateX(-14px); } }
+  @media (prefers-reduced-motion: reduce) { .ghost:not([hidden]) { animation: none; } }
+  .home:focus-visible, .ghost:focus-visible, .sound:focus-visible { outline: 2px solid var(--red); outline-offset: 4px; }
+
+  /* The hints are painted on the floor above the 404, each half gone once you have done what it
+     says. Keyboard words only show where there is a keyboard. */
+  .floor-text {
+    position: fixed; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; white-space: nowrap;
+    font: 500 40px/1 "JetBrains Mono", ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase;
+    color: #73675A; opacity: 0; transition: opacity .6s ease;
+  }
+  .floor-text.on { opacity: 1; }
+  .floor-text div { text-align: center; }
+  .floor-text div + div { margin-top: 9px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  @media (max-width: 560px) { .label { font-size: 11px; } }
+  .no-gl .floor-text, .no-gl .sound, .no-gl #reset { display: none; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="scene" aria-hidden="true"></canvas>
+
+<div class="ui">
+  <header class="corner top">
+  </header>
+  <main class="caption" id="caption">
+    <h1>This page toppled over.</h1>
+    <p id="sub">Give the first block a push and watch your way home unfold.</p>
+    <nav class="cta" aria-label="Page">
+      <a class="home" id="home" href="/">Back to home</a>
+      <button type="button" class="ghost" id="reset" hidden>Stand them up</button>
+    </nav>
+  </main>
+  <footer class="corner bottom">
+    <button type="button" class="label sound" id="sound" aria-pressed="true">Sound on</button>
+  </footer>
+</div>
+<div class="floor-text" id="floorText" aria-hidden="true"><div>Click a block or press Space · drag the floor to roll a marble</div></div>
+<p class="sr" id="live" aria-live="polite"></p>
+
+<script type="module">
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const RAPIER_URL = 'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/dist/rapier.mjs';
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const coarse = matchMedia('(pointer: coarse)');
+const $ = (id) => document.getElementById(id);
+
+// One unit is one domino's height. A run spaces them a little over half a height apart,
+// which is where a falling domino hits the next one hard and low enough to keep going.
+const DOMINO = { w: 0.5, h: 1, t: 0.16 };
+// The sign is low and wide: a tall one hid the hook's last blocks so they seemed to stand on it.
+const HOME = { w: 3.8, h: 1.55, t: 0.45 };
+const STEP = 0.55;          // centre to centre along a run
+const GAP = 0.45;           // half the gap where one run meets the side of another
+const GRAVITY = 27;
+const PALETTE = ['#E63B2E', '#F28C28', '#F6C945', '#3BAA5C', '#2F6FD6', '#8A4FD3'];
+const TRIGGER = THREE.MathUtils.degToRad(20);   // tipped far enough to be hitting the next one
+const DOWN = THREE.MathUtils.degToRad(50);      // counts as fallen
+const UPRIGHT = THREE.MathUtils.degToRad(4);
+const Y = new THREE.Vector3(0, 1, 0);
+
+// A seeded random so the wood grain and colour jitter look the same on every load.
+let seed = 404;
+const rand = () => { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+
+// ---------------------------------------------------------------------------------------------
+// The layout: "404" drawn as runs of dominoes. Each run is a curve sampled at even spacing
+// (the way manthrax lays his chains). Runs are joined by links; a link marked `assist` is a
+// junction where the falling domino passes between two others, so the page gives the branch
+// a tap at the moment of contact instead of trusting a glancing hit.
+// ---------------------------------------------------------------------------------------------
+const pieces = [];
+const v2 = (x, z) => new THREE.Vector2(x, z);
+
+function addPiece(x, z, fx, fz, kind = 'domino') {
+  const size = kind === 'home' ? HOME : DOMINO;
+  const f = new THREE.Vector2(fx, fz).normalize();
+  const rest = new THREE.Quaternion().setFromAxisAngle(Y, Math.atan2(f.x, f.y));
+  pieces.push({
+    id: pieces.length, kind, ...size,
+    fwd: new THREE.Vector3(f.x, 0, f.y),
+    restPos: new THREE.Vector3(x, size.h / 2, z), restQuat: rest,
+    pos: new THREE.Vector3(x, size.h / 2, z), quat: rest.clone(), up: new THREE.Vector3(0, 1, 0),
+    next: [], prev: [], depth: -1, tilt: 0, fired: false, down: false, dir: 0, body: null, slept: false, inst: -1,
+  });
+  return pieces.length - 1;
+}
+
+function link(a, b, assist = false) {
+  pieces[a].next.push({ id: b, assist });
+  pieces[b].prev.push({ id: a, assist });
+}
+
+function addRun(curve) {
+  const n = Math.max(1, Math.round(curve.getLength() / STEP));
+  const ids = [];
+  for (let i = 0; i <= n; i++) {
+    const p = curve.getPointAt(i / n), t = curve.getTangentAt(i / n);
+    ids.push(addPiece(p.x, p.y, t.x, t.y));
+  }
+  for (let i = 1; i < ids.length; i++) link(ids[i - 1], ids[i]);
+  return { ids, first: ids[0], last: ids.at(-1) };
+}
+
+const path = (...curves) => { const p = new THREE.CurvePath(); curves.forEach((c) => p.add(c)); return p; };
+const line = (a, b) => new THREE.LineCurve(a, b);
+
+const BAR = 1.8, TOP = -6, BOTTOM = 6;
+// A portrait screen is short of width, not height, so there the digits are condensed: the same
+// height, about three quarters of the width, and each block comes out bigger on screen.
+const NARROW = innerWidth / innerHeight < 0.75;
+const RX = NARROW ? 2.95 : 3.75, RZ = 6;        // the 0 is an ellipse
+const FOUR_W = NARROW ? 6.6 : 8.5, STEM = NARROW ? 4.6 : 6, DIGIT_GAP = 3.2;
+const LEAD = NARROW ? 1.2 : 2.2;                // the lead-in before the first 4
+const LEFT = -(RX + DIGIT_GAP + FOUR_W);        // x of the first 4's left edge
+const RIGHT = RX + DIGIT_GAP;                   // x of the second 4's left edge
+
+// A 4: the bar runs from the left corner to the stem, where it splits up, down and on to the
+// right. The diagonal branches off at the left corner and meets the stem at the apex.
+function four(ox, into) {
+  const sx = ox + STEM;
+  const L = v2(ox, BAR), A = v2(sx, TOP);
+  const dir = A.clone().sub(L).normalize();
+  const bar = addRun(line(L, v2(sx - GAP, BAR)));
+  const diag = addRun(line(L.clone().addScaledVector(dir, 0.7), A.clone().addScaledVector(dir, -0.75)));
+  const up = addRun(line(v2(sx, BAR - GAP), v2(sx, TOP + 0.3)));
+  const down = addRun(line(v2(sx, BAR + GAP), v2(sx, BOTTOM)));
+  link(into, bar.first);
+  link(into, diag.first, true);
+  link(bar.last, up.first, true);
+  link(bar.last, down.first, true);
+  return { bar, sx, rx: ox + FOUR_W };
+}
+
+const lead = addRun(line(v2(LEFT - LEAD, BAR), v2(LEFT - STEP, BAR)));
+const START = lead.first;
+const f1 = four(LEFT, lead.last);
+
+// First 4 → 0: the rest of the bar, then an S-bend that arrives at the 0's left side. It stops
+// far enough out that its last block, once down, ends flush with the 0 instead of poking in.
+const ENTRY_END = -RX - 0.8;
+const entry = addRun(path(
+  line(v2(f1.sx + GAP, BAR), v2(f1.rx, BAR)),
+  new THREE.CubicBezierCurve(v2(f1.rx, BAR), v2(f1.rx + 1.1, BAR), v2(ENTRY_END - 1.1, 0), v2(ENTRY_END, 0)),
+));
+link(f1.bar.last, entry.first);
+
+// The 0 is one loop: in at its left side, up and over the top and all the way round, back up to
+// just short of where it started. The way on to the second 4 branches off its right side. (Two
+// arcs that split at the left and met head on at the right left a pile-up of crossed and
+// propped blocks there.)
+const loop = addRun(new THREE.EllipseCurve(0, 0, RX, RZ, Math.PI + GAP / RZ, 3 * Math.PI - Math.asin(1.1 / RZ), false, 0));
+link(entry.last, loop.first, true);
+const rightmost = loop.ids.reduce((a, b) => (pieces[b].restPos.x > pieces[a].restPos.x ? b : a));
+
+// It leaves already angled down, like a 4's diagonal leaving its bar, so its first block falls in
+// line with the rest of the bend (leaving straight out, it lay crosswise on its own).
+const exit = addRun(new THREE.CubicBezierCurve(v2(RX + 0.5, 0.1), v2(RX + 1.0, 0.45), v2(RIGHT - STEP - 0.8, BAR), v2(RIGHT - STEP, BAR)));
+link(rightmost, exit.first, true);
+
+const f2 = four(RIGHT, exit.last);
+
+// Second 4 → home: the bar carries on, hooks down and runs into the home block, which falls
+// toward you and lands face up.
+const HOOK_R = 1.4;
+const hook = addRun(path(
+  line(v2(f2.sx + GAP, BAR), v2(f2.rx, BAR)),
+  new THREE.EllipseCurve(f2.rx, BAR + HOOK_R, HOOK_R, HOOK_R, -Math.PI / 2, 0, false, 0),
+  line(v2(f2.rx + HOOK_R, BAR + HOOK_R), v2(f2.rx + HOOK_R, BAR + HOOK_R + 1.7)),
+));
+link(f2.bar.last, hook.first);
+const homeAt = pieces[hook.last].restPos;
+const HOME_ID = addPiece(homeAt.x, homeAt.z + STEP + HOME.t / 2, 0, 1, 'home');
+link(hook.last, HOME_ID, true);
+
+const dominoes = pieces.filter((p) => p.kind === 'domino');
+const home = pieces[HOME_ID];
+
+// Order along the chain (breadth first from the start): drives the rainbow and the stand-up wave.
+{
+  const queue = [START];
+  pieces[START].depth = 0;
+  while (queue.length) {
+    const p = pieces[queue.shift()];
+    for (const { id } of p.next) if (pieces[id].depth < 0) { pieces[id].depth = p.depth + 1; queue.push(id); }
+  }
+}
+const MAX_DEPTH = Math.max(...pieces.map((p) => p.depth));
+
+// ---------------------------------------------------------------------------------------------
+// Renderer, light and materials
+// ---------------------------------------------------------------------------------------------
+const canvas = $('scene');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+} catch (err) {
+  document.documentElement.classList.add('no-gl');
+  throw err;
+}
+// full resolution on 3x phones (their screens are small, so it costs no more than 2x on a laptop)
+renderer.setPixelRatio(Math.min(devicePixelRatio, innerWidth * innerHeight < 600000 ? 3 : 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 1;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+
+const PAPER = new THREE.Color('#EFEAE0');
+const scene = new THREE.Scene();
+scene.background = PAPER;
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.55;
+
+const camera = new THREE.PerspectiveCamera(26, 1, 1, 400);
+
+const sun = new THREE.DirectionalLight('#fff4e4', 2.5);
+sun.position.set(-13, 26, 15);
+sun.castShadow = true;
+const small = Math.min(innerWidth, innerHeight) < 700;
+sun.shadow.mapSize.set(small ? 2048 : 4096, small ? 2048 : 4096);
+Object.assign(sun.shadow.camera, { left: -27, right: 27, top: 22, bottom: -22, near: 1, far: 90 });
+sun.shadow.radius = 2.5;
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.015;
+scene.add(sun, sun.target, new THREE.HemisphereLight('#ffffff', '#d9ccb6', 0.45));
+
+// The backdrop: warm ivory with soft colour pushed into the corners (the owner's Option A: pink
+// top right, sage bottom left, a faint blue along the bottom; after mymind's and Oevra's glows
+// on Mobbin), so the centre stays calm and the blocks are the focus. A whisper of grain. It is a
+// full-screen quad drawn before everything else, so the glass marbles refract it.
+const backdrop = new THREE.Mesh(
+  new THREE.PlaneGeometry(2, 2),
+  new THREE.ShaderMaterial({
+    depthTest: false, depthWrite: false, toneMapped: false,
+    uniforms: {
+      uRes: { value: new THREE.Vector2(1, 1) }, uTime: { value: 0 }, uPointer: { value: new THREE.Vector2() }, uPulse: { value: 0 },
+      uBase: { value: new THREE.Color('#F1EBDD') },
+      // the blue is a periwinkle, stronger at its edge than the others: a pale blue over the warm
+      // ivory mixed down to a flat grey patch under the buttons
+      uPink: { value: new THREE.Color('rgb(235, 196, 197)') }, uSage: { value: new THREE.Color('rgb(191, 220, 193)') }, uBlue: { value: new THREE.Color('rgb(186, 182, 240)') },
+    },
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 1.0, 1.0); }',
+    fragmentShader: `uniform vec2 uRes; uniform float uTime; uniform vec2 uPointer; uniform float uPulse;
+      uniform vec3 uBase; uniform vec3 uPink; uniform vec3 uSage; uniform vec3 uBlue;
+      varying vec2 vUv;
+      float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+      // a CSS-style radial glow: strength a at the centre, gone at radius r (in screen-ellipse units)
+      float glow(vec2 c, float r, float a) { return a * (1.0 - smoothstep(0.0, r, length(vUv - c))); }
+      void main() {
+        float t = uTime;
+        // each corner glow wanders on its own slow loop (20–40 s, so the page is never still but
+        // nothing pulls the eye) and breathes in size and strength; all of them lean a little
+        // away from the pointer for depth, and swell for a moment when the run reaches home
+        vec2 lean = -uPointer * 0.03;
+        float swell = 1.0 + 0.3 * uPulse;
+        vec2 pinkC = vec2(1.0, 1.0) + vec2(0.11 * sin(t * 0.23) - 0.05, 0.09 * sin(t * 0.17 + 1.1) - 0.03) + lean;
+        vec2 sageC = vec2(0.0, 0.0) + vec2(0.1 * sin(t * 0.19 + 2.3) + 0.04, 0.1 * sin(t * 0.26 + 0.4) + 0.03) + lean;
+        vec2 blueC = vec2(0.55, 0.0) + vec2(0.16 * sin(t * 0.15 + 2.1), 0.05 * sin(t * 0.21 + 3.0)) + lean;
+        float pink = glow(pinkC, 0.68 * (1.0 + 0.12 * sin(t * 0.29)), 0.55 * swell * (0.9 + 0.1 * sin(t * 0.31 + 0.7)));
+        float sage = glow(sageC, 0.64 * (1.0 + 0.12 * sin(t * 0.27 + 2.0)), 0.5 * swell * (0.9 + 0.1 * sin(t * 0.33 + 1.9)));
+        float bluePeak = 0.46 * swell * (0.9 + 0.1 * sin(t * 0.37 + 3.1));
+        float blue = glow(blueC, 0.46 * (1.0 + 0.14 * sin(t * 0.25 + 4.0)), bluePeak);
+        vec3 col = uBase;
+        col = mix(col, uPink, clamp(pink, 0.0, 1.0));
+        col = mix(col, uSage, clamp(sage, 0.0, 1.0));
+        col = mix(col, uBlue, clamp(blue, 0.0, 1.0));
+        // where the periwinkle is half faded it would read grey against the ivory, so that band
+        // takes a faint blush: ivory to blush to periwinkle
+        float n = clamp(blue / bluePeak, 0.0, 1.0);
+        col += vec3(0.034, -0.004, 0.02) * 4.0 * n * (1.0 - n);
+        col += (hash(floor(vUv * uRes)) - 0.5) * 0.012;
+        gl_FragColor = vec4(col, 1.0);
+        #include <colorspace_fragment>
+      }`,
+  }),
+);
+backdrop.frustumCulled = false;
+backdrop.renderOrder = -100;
+scene.add(backdrop);
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(240, 240), new THREE.ShadowMaterial({ color: '#4a3622', opacity: 0.24 }));
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// Painted wood: a pale grain texture that the paint colour multiplies, under a lacquer coat.
+function grain() {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 512;
+  const g = c.getContext('2d');
+  g.fillStyle = '#f4f4f4';
+  g.fillRect(0, 0, 256, 512);
+  for (let i = 0; i < 80; i++) {
+    const x0 = rand() * 256, amp = 2 + rand() * 7, freq = 0.004 + rand() * 0.012, ph = rand() * 6.3;
+    g.strokeStyle = `rgba(70, 50, 30, ${0.06 + rand() * 0.11})`;
+    g.lineWidth = 0.6 + rand() * 2.4;
+    g.beginPath();
+    for (let y = 0; y <= 512; y += 8) {
+      const x = x0 + Math.sin(y * freq + ph) * amp;
+      if (y) g.lineTo(x, y); else g.moveTo(x, y);
+    }
+    g.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
+const wood = grain();
+
+const dominoMat = new THREE.MeshPhysicalMaterial({ map: wood, roughness: 0.5, clearcoat: 0.35, clearcoatRoughness: 0.32 });
+const dominoMesh = new THREE.InstancedMesh(new RoundedBoxGeometry(DOMINO.w, DOMINO.h, DOMINO.t, 3, 0.03), dominoMat, dominoes.length);
+dominoMesh.castShadow = dominoMesh.receiveShadow = true;
+dominoMesh.frustumCulled = false;
+const baseColor = [];
+const order = [];
+for (let d = 0; d <= MAX_DEPTH; d++) {
+  let k;
+  do k = Math.floor(rand() * PALETTE.length); while (k === order[d - 1] || k === order[d - 2]);
+  order.push(k);
+}
+dominoes.forEach((p, i) => {
+  p.inst = i;
+  const c = new THREE.Color(PALETTE[order[p.depth]]);
+  c.offsetHSL((rand() - 0.5) * 0.012, 0, (rand() - 0.5) * 0.06);
+  baseColor[i] = c;
+  dominoMesh.setColorAt(i, c);
+});
+scene.add(dominoMesh);
+
+const footTex = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  g.filter = 'blur(10px)';
+  g.fillStyle = 'rgba(45, 30, 15, .55)';
+  g.fillRect(30, 30, 68, 68);
+  return new THREE.CanvasTexture(c);
+})();
+const footGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+const footMat = new THREE.MeshBasicMaterial({ map: footTex, transparent: true, depthWrite: false });
+const footMesh = new THREE.InstancedMesh(footGeo, footMat, dominoes.length + 1);
+footMesh.frustumCulled = false;
+scene.add(footMesh);
+const footUp = new THREE.Vector3(), axisX = new THREE.Vector3(), footPos = new THREE.Vector3(), footScale = new THREE.Vector3(), footQuat = new THREE.Quaternion();
+// The footprint follows the block: centred under it, turned with it, and as long as its shadow
+// on the floor straight below (thin when standing, the whole face when lying).
+function footprint(p, index) {
+  axisX.set(1, 0, 0).applyQuaternion(p.quat);
+  footQuat.setFromAxisAngle(Y, Math.atan2(-axisX.z, axisX.x));
+  const upY = footUp.set(0, 1, 0).applyQuaternion(p.quat).y;   // read from the pose: the stand-up animation doesn't update p.up
+  const lean = Math.sqrt(Math.max(0, 1 - upY * upY));
+  footPos.set(p.pos.x, 0.003, p.pos.z);
+  footScale.set((p.w + 0.12) * 1.6, 1, (p.t * Math.abs(upY) + p.h * lean + 0.12) * 1.6);
+  footMesh.setMatrixAt(index, M.compose(footPos, footQuat, footScale));
+}
+
+const homeMesh = new THREE.Mesh(
+  new RoundedBoxGeometry(HOME.w, HOME.h, HOME.t, 4, 0.06),
+  new THREE.MeshPhysicalMaterial({ color: '#1F1B16', map: wood, roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.2 }),
+);
+homeMesh.castShadow = homeMesh.receiveShadow = true;
+scene.add(homeMesh);
+
+// The home block is a sign. Standing, the face toward you says HOME. The chain hits its back
+// face, it falls toward you, and the back face lands up saying where it takes you.
+// The labels are drawn at the face's own proportions, 1040 px across.
+const LABEL_W = HOME.w - 0.3, LABEL_H = HOME.h - 0.22, LABEL_PX = Math.round(1040 * LABEL_H / LABEL_W);
+function label(paint) {
+  const c = document.createElement('canvas');
+  c.width = 1040; c.height = LABEL_PX;
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  const redraw = () => {
+    const g = c.getContext('2d');
+    g.clearRect(0, 0, c.width, c.height);
+    g.fillStyle = '#EFEAE0';
+    g.textBaseline = 'alphabetic';
+    paint(g);
+    tex.needsUpdate = true;
+  };
+  redraw();
+  document.fonts?.ready.then(redraw);
+  return tex;
+}
+const frontTex = label((g) => {
+  g.font = '800 300px "Bricolage Grotesque", sans-serif';
+  g.letterSpacing = '-12px';
+  g.textAlign = 'center';
+  g.fillText('HOME', 520, LABEL_PX / 2 + 108);
+});
+const backTex = label((g) => {
+  const base = LABEL_PX - 62;
+  g.font = '500 118px "JetBrains Mono", monospace';
+  g.letterSpacing = '6px';
+  g.fillText('TAKE ME', 50, base - 200);
+  g.font = '800 236px "Bricolage Grotesque", sans-serif';
+  g.letterSpacing = '-10px';
+  g.fillText('HOME', 42, base);
+  // a drawn arrow after the word: the glyph comes out hairline at this size
+  const s = 112, x = Math.min(42 + g.measureText('HOME').width + 64, 1040 - 50 - s);
+  g.strokeStyle = '#EFEAE0';
+  g.lineWidth = 28;
+  g.lineCap = 'square';
+  g.beginPath();
+  // ↙: once it lands, the sign points down at the Back to home button under the 404
+  g.moveTo(x + s, base - s); g.lineTo(x, base);
+  g.moveTo(x, base - s); g.lineTo(x, base); g.lineTo(x + s, base);
+  g.stroke();
+});
+function addDecal(tex, basis, z) {
+  const m = new THREE.Mesh(
+    new THREE.PlaneGeometry(LABEL_W, LABEL_H),
+    new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.55, polygonOffset: true, polygonOffsetFactor: -2 }),
+  );
+  m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(...basis));
+  m.position.set(0, 0, z);
+  homeMesh.add(m);
+}
+addDecal(frontTex, [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)], HOME.t / 2 + 0.002);
+// on the back face the text runs upside down, so it reads the right way once the block lies face up
+addDecal(backTex, [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 0, -1)], -HOME.t / 2 - 0.002);
+
+// Under a hovered block: a soft shadow that deepens and spreads as the block lifts.
+const hoverShadow = new THREE.Mesh(
+  new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
+  new THREE.MeshBasicMaterial({ map: (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const g = c.getContext('2d');
+    g.filter = 'blur(12px)';
+    g.fillStyle = 'rgba(40, 26, 12, .95)';
+    g.fillRect(30, 36, 68, 56);
+    return new THREE.CanvasTexture(c);
+  })(), transparent: true, depthWrite: false, opacity: 0 }),
+);
+hoverShadow.renderOrder = 1;
+scene.add(hoverShadow);
+
+// Marbles: clear glass with a twisted cat's-eye swirl in one of the domino colours, so you can
+// see them spin as they roll. A soft blob under each one stands in for a shadow (a glass ball
+// would cast a solid one).
+const MARBLE_R = 0.4;
+const marbleGeo = new THREE.SphereGeometry(MARBLE_R, 48, 32);
+const glassMat = new THREE.MeshPhysicalMaterial({ color: '#ffffff', transmission: 1, thickness: 0.8, roughness: 0.02, ior: 1.5, dispersion: 0.3, attenuationColor: '#e4f3f5', attenuationDistance: 3, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 1.6 });
+const vaneGeo = (() => {
+  const L = MARBLE_R * 1.55, W = MARBLE_R * 0.3;
+  const g = new THREE.PlaneGeometry(L, W, 32, 4);
+  const pos = g.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i);
+    const twist = (x / L) * Math.PI * 1.3;
+    const taper = Math.pow(Math.max(0, Math.cos((x / L) * Math.PI)), 0.6);   // pinched at both ends, inside the glass
+    pos.setXYZ(i, x, y * taper * Math.cos(twist), y * taper * Math.sin(twist));
+  }
+  g.computeVertexNormals();
+  return g;
+})();
+const vaneMats = PALETTE.map((c) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.18, roughness: 0.35, side: THREE.DoubleSide }));
+const blobTex = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  r.addColorStop(0, 'rgba(58, 40, 22, .55)');
+  r.addColorStop(0.45, 'rgba(58, 40, 22, .22)');
+  r.addColorStop(1, 'rgba(58, 40, 22, 0)');
+  g.fillStyle = r;
+  g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+})();
+const blobGeo = new THREE.PlaneGeometry(MARBLE_R * 3, MARBLE_R * 3).rotateX(-Math.PI / 2);
+// where a point's shadow lands, per unit of height, for the sun's direction
+const SHADOW_RUN = new THREE.Vector2(-sun.position.x / sun.position.y, -sun.position.z / sun.position.y);
+const SHADOW_ANGLE = Math.atan2(-SHADOW_RUN.y, SHADOW_RUN.x);
+// the cast shadow comes from the light; the blob is only the dark contact right under the ball
+function placeBlob(blob, x, y, z) {
+  const lift = Math.max(0, y - MARBLE_R);
+  blob.position.set(x, 0.004, z);
+  blob.scale.setScalar(0.55 + lift * 0.2);
+  blob.material.opacity = Math.max(0, 1 - lift * 1.5);
+}
+let marbleColour = 0;
+function marbleMesh() {
+  const g = new THREE.Group();
+  const mat = vaneMats[marbleColour++ % vaneMats.length];
+  for (let k = 0; k < 2; k++) {
+    const v = new THREE.Mesh(vaneGeo, mat);
+    v.rotation.set(k * Math.PI / 2, 0.35, 0);
+    g.add(v);
+  }
+  const glass = new THREE.Mesh(marbleGeo, glassMat);
+  glass.castShadow = true;   // a crisp shadow the same way the blocks throw theirs
+  g.add(glass);
+  return g;
+}
+
+// Aim: while you drag, a dotted path runs from the marble the way it will go. Its length shows
+// the power.
+const DOTS = 30, DOT_GAP = 0.3;
+const INK = new THREE.Color('#1F1B16'), PAPER_C = new THREE.Color('#EFEAE0');
+const dots = new THREE.InstancedMesh(new THREE.CircleGeometry(0.075, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.75, depthWrite: false }), DOTS);
+dots.count = 0;
+dots.frustumCulled = false;
+dots.renderOrder = 10;
+dots.material.depthTest = false;
+for (let i = 0; i < DOTS; i++) dots.setColorAt(i, INK);
+const arrowHead = new THREE.Mesh(
+  new THREE.ShapeGeometry(new THREE.Shape([new THREE.Vector2(0, 0.24), new THREE.Vector2(0.38, 0), new THREE.Vector2(0, -0.24)])).rotateX(-Math.PI / 2),
+  new THREE.MeshBasicMaterial({ color: '#1F1B16', transparent: true, opacity: 0.75, depthWrite: false }),
+);
+arrowHead.renderOrder = 10;
+arrowHead.material.depthTest = false;
+arrowHead.visible = false;
+// A paper-coloured halo under each dot and the arrowhead: unseen on the floor, it keeps the path
+// readable where it crosses a dark or blue block.
+const haloMat = new THREE.MeshBasicMaterial({ color: '#F6F1E6', transparent: true, opacity: 0.85, depthWrite: false, depthTest: false });
+const dotHalos = new THREE.InstancedMesh(new THREE.CircleGeometry(0.12, 20).rotateX(-Math.PI / 2), haloMat, DOTS);
+dotHalos.count = 0;
+dotHalos.frustumCulled = false;
+const arrowHalo = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape([new THREE.Vector2(-0.08, 0.36), new THREE.Vector2(0.5, 0), new THREE.Vector2(-0.08, -0.36)])).rotateX(-Math.PI / 2), haloMat);
+arrowHalo.visible = false;
+dotHalos.renderOrder = arrowHalo.renderOrder = 9;
+scene.add(dotHalos, arrowHalo, dots, arrowHead);
+const AIM_Y = 0.012, M4 = new THREE.Matrix4(), dotPos = new THREE.Vector3(), dotScale = new THREE.Vector3();
+function showAim(from, dir, len) {
+  // len: 0..7 floor units of drag; the harder the throw, the warmer the dots
+  aimInk.copy(INK).lerp(RED_C, Math.pow(len / 7, 1.4) * 0.85);
+  arrowHead.material.color.copy(aimInk);
+  if (len < 0.4) { hideAim(); return; }
+  const path = 0.9 + len * 1.05;
+  const n = Math.min(DOTS, Math.floor(path / DOT_GAP));
+  for (let i = 0; i < n; i++) {
+    const t = i / Math.max(1, n - 1);
+    dotPos.set(from.x, AIM_Y, from.z).addScaledVector(dir, MARBLE_R + 0.3 + i * DOT_GAP);
+    dotScale.setScalar(1 - t * 0.35);
+    dots.setMatrixAt(i, M4.compose(dotPos, Q_IDENTITY, dotScale));
+    dotHalos.setMatrixAt(i, M4);
+    dots.setColorAt(i, tmpColor.copy(aimInk).lerp(PAPER_C, t * 0.3));
+  }
+  dots.count = dotHalos.count = n;
+  dots.instanceMatrix.needsUpdate = dotHalos.instanceMatrix.needsUpdate = true;
+  dots.instanceColor.needsUpdate = true;
+  arrowHead.position.set(from.x, AIM_Y, from.z).addScaledVector(dir, MARBLE_R + 0.3 + n * DOT_GAP);
+  arrowHead.rotation.y = Math.atan2(-dir.z, dir.x);
+  arrowHalo.position.copy(arrowHead.position);
+  arrowHalo.rotation.y = arrowHead.rotation.y;
+  arrowHead.visible = arrowHalo.visible = true;
+}
+function hideAim() { dots.count = dotHalos.count = 0; arrowHead.visible = arrowHalo.visible = false; }
+const Q_IDENTITY = new THREE.Quaternion(), tmpColor = new THREE.Color(), aimInk = new THREE.Color(), RED_C = new THREE.Color('#E63B2E');
+
+// ---------------------------------------------------------------------------------------------
+// Drawing poses
+// ---------------------------------------------------------------------------------------------
+const M = new THREE.Matrix4(), ONE = new THREE.Vector3(1, 1, 1);
+// A lean is drawn only (physics never sees it): the block tips by p.leanNow radians about the
+// bottom edge on the side it leans toward, the way a real block rocks before it falls.
+const leanQ = new THREE.Quaternion(), leanPos = new THREE.Vector3(), pivot = new THREE.Vector3(), LOCAL_X = new THREE.Vector3(1, 0, 0);
+function leaned(p) {
+  const a = p.leanNow || 0;
+  pivot.set(0, -p.h / 2, (Math.sign(a) || 1) * p.t / 2);
+  leanQ.copy(p.quat).multiply(tmpQ.setFromAxisAngle(LOCAL_X, a));
+  // keep the pivot edge where it is: pos' = pivotWorld - leanQ * pivotLocal; then lift
+  leanPos.copy(pivot).applyQuaternion(p.quat).add(p.pos).sub(pivot.applyQuaternion(leanQ));
+  leanPos.y += p.liftNow || 0;
+}
+const tmpQ = new THREE.Quaternion();
+function draw(p) {
+  if (p.kind === 'home') {
+    homeMesh.position.copy(p.pos);
+    homeMesh.quaternion.copy(p.quat);
+    footprint(p, dominoes.length);
+  } else {
+    if (p.leanNow || p.liftNow) { leaned(p); dominoMesh.setMatrixAt(p.inst, M.compose(leanPos, leanQ, ONE)); }
+    else dominoMesh.setMatrixAt(p.inst, M.compose(p.pos, p.quat, ONE));
+    footprint(p, p.inst);
+  }
+  footMesh.instanceMatrix.needsUpdate = true;
+}
+const lyingQuat = (p) => p.restQuat.clone().multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2));
+const lyingPos = (p) => p.restPos.clone().addScaledVector(p.fwd, p.h / 2).setY(p.t / 2);
+
+// ---------------------------------------------------------------------------------------------
+// Camera: fit the whole layout (with room for fallen pieces) into the space between the
+// header and the footer, at a fixed angle from the front.
+// ---------------------------------------------------------------------------------------------
+const BOUNDS = new THREE.Box3(new THREE.Vector3(LEFT - LEAD - 0.8, 0, TOP - 1.1), new THREE.Vector3(home.restPos.x + HOME.w / 2 + 0.4, 1.2, home.restPos.z + HOME.h + 0.2));
+const ELEV = THREE.MathUtils.degToRad(56);
+const corners = [];
+for (const x of [BOUNDS.min.x, BOUNDS.max.x]) for (const y of [BOUNDS.min.y, BOUNDS.max.y]) for (const z of [BOUNDS.min.z, BOUNDS.max.z]) corners.push(new THREE.Vector3(x, y, z));
+for (const x of [-1, 1]) for (const z of [-1, 1]) corners.push(home.restPos.clone().add(new THREE.Vector3(x * HOME.w / 2, HOME.h / 2, z * HOME.t / 2)));
+const lookAt = BOUNDS.getCenter(new THREE.Vector3()).setY(0);
+const viewDir = new THREE.Vector3(0, Math.sin(ELEV), Math.cos(ELEV));
+let view = { w: 1, h: 1 };
+const tmp = new THREE.Vector3();
+
+function projected(w, h) {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const c of corners) {
+    tmp.copy(c).project(camera);
+    const x = (tmp.x + 1) / 2 * w, y = (1 - tmp.y) / 2 * h;
+    x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+  }
+  return { x0, x1, y0, y1 };
+}
+
+function fit() {
+  const w = innerWidth, h = innerHeight;
+  view = { w, h };
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+  // The 404 and the caption under it are one group, centred between the corner labels. The
+  // 404's box includes the room its pieces need once fallen, so nothing lands on the caption.
+  const topBox = document.querySelector('.top').getBoundingClientRect();
+  const bottomBox = document.querySelector('.bottom').getBoundingClientRect();
+  const caption = $('caption');
+  const capH = caption.offsetHeight;
+  const gap = Math.round(THREE.MathUtils.clamp(h * 0.02, 8, 22));
+  const area = { y0: topBox.bottom + 20, y1: bottomBox.top - 20 };
+  // on wide screens the 404 keeps some air at the sides
+  const band = { w: Math.min(topBox.right - topBox.left, w > 760 ? w * 0.8 : Infinity), h: Math.max(80, area.y1 - area.y0 - capH - gap) };
+  let lo = 5, hi = 600, r;
+  for (let i = 0; i < 32; i++) {
+    const dist = (lo + hi) / 2;
+    camera.position.copy(lookAt).addScaledVector(viewDir, dist);
+    camera.lookAt(lookAt);
+    camera.updateMatrixWorld();
+    r = projected(w, h);
+    if (r.x1 - r.x0 <= band.w && r.y1 - r.y0 <= band.h) hi = dist; else lo = dist;
+  }
+  camera.position.copy(lookAt).addScaledVector(viewDir, hi);
+  camera.lookAt(lookAt);
+  camera.updateMatrixWorld();
+  r = projected(w, h);
+  const artH = r.y1 - r.y0;
+  // the floor hint over the 404 counts as part of the stack, so the whole thing sits centred
+  // (when there's room for it; it stays reserved after the hints go, so nothing shifts later)
+  const free = area.y1 - area.y0 - (artH + gap + capH), hint = w < 640 ? 70 : 48;
+  const lift = free > hint * 1.5 ? hint : 0;
+  const y0 = area.y0 + Math.max(0, (free - lift) / 2) + lift;
+  camera.setViewOffset(w, h, (r.x0 + r.x1) / 2 - (topBox.left + topBox.right) / 2, (r.y0 + r.y1) / 2 - (y0 + artH / 2), w, h);
+  camera.updateProjectionMatrix();
+  caption.style.top = `${Math.round(y0 + artH + gap)}px`;
+  backdrop.material.uniforms.uRes.value.set(w, h);
+  caption.classList.add('placed');
+  capRect = caption.getBoundingClientRect();
+  const centre = floorAt((capRect.left + capRect.right) / 2, (capRect.top + capRect.bottom) / 2);
+  if (centre) capCentre.copy(centre);
+  buildEdges();
+  placeFloorText();
+}
+
+function toScreen(v) {
+  tmp.copy(v).project(camera);
+  return [(tmp.x + 1) / 2 * view.w, (1 - tmp.y) / 2 * view.h];
+}
+
+// ---------------------------------------------------------------------------------------------
+// Sound: a wooden clack made from a filtered noise tap and a short falling tone.
+// ---------------------------------------------------------------------------------------------
+let audio = null, master = null, noise = null, soundOn = true, lastClack = 0;
+function ensureAudio() {
+  if (audio) { if (audio.state === 'suspended') audio.resume(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  audio = new AC();
+  const comp = audio.createDynamicsCompressor();
+  comp.threshold.value = -18; comp.ratio.value = 6;
+  master = audio.createGain();
+  master.gain.value = soundOn ? 0.7 : 0;
+  master.connect(comp).connect(audio.destination);
+  noise = audio.createBuffer(1, audio.sampleRate * 0.1, audio.sampleRate);
+  const ch = noise.getChannelData(0);
+  for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / ch.length, 3);
+  hissBuf = audio.createBuffer(1, audio.sampleRate * 2, audio.sampleRate);
+  const hc = hissBuf.getChannelData(0);
+  for (let i = 0; i < hc.length; i++) hc[i] = Math.random() * 2 - 1;
+  // one rolling voice for all marbles: low filtered noise that swells with the fastest marble
+  const roll = audio.createBufferSource();
+  roll.buffer = hissBuf;
+  roll.loop = true;
+  rollFilter = audio.createBiquadFilter();
+  rollFilter.type = 'lowpass';
+  rollFilter.frequency.value = 300;
+  rollGain = audio.createGain();
+  rollGain.gain.value = 0;
+  roll.connect(rollFilter).connect(rollGain).connect(master);
+  roll.start();
+}
+let hissBuf = null, rollFilter = null, rollGain = null;
+function voice(at) {
+  const pan = audio.createStereoPanner();
+  pan.pan.value = THREE.MathUtils.clamp((toScreen(at)[0] / view.w) * 2 - 1, -1, 1) * 0.7;
+  pan.connect(master);
+  return pan;
+}
+function envelope(g, t, peak, decay) {
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + 0.003);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+}
+function ping(t, freq, peak, decay, out, type = 'sine') {
+  const o = audio.createOscillator();
+  o.type = type;
+  o.frequency.value = freq;
+  const g = audio.createGain();
+  envelope(g, t, peak, decay);
+  o.connect(g).connect(out);
+  o.start(t);
+  o.stop(t + decay + 0.05);
+}
+function hiss(t, freq, q, peak, decay, out, sweepTo) {
+  const src = audio.createBufferSource();
+  src.buffer = hissBuf;
+  const f = audio.createBiquadFilter();
+  f.type = 'bandpass';
+  f.Q.value = q;
+  f.frequency.setValueAtTime(freq, t);
+  if (sweepTo) f.frequency.exponentialRampToValueAtTime(sweepTo, t + decay);
+  const g = audio.createGain();
+  envelope(g, t, peak, decay);
+  src.connect(f).connect(g).connect(out);
+  src.start(t, Math.random() * 1.5);
+  src.stop(t + decay + 0.05);
+}
+// Marble sounds. k is how hard, 0..1.
+const soundLog = [];
+function sfx(kind, k, at) {
+  soundLog.push(kind);
+  if (soundLog.length > 80) soundLog.shift();
+  if (!audio || !soundOn) return;
+  const t = audio.currentTime, out = voice(at);
+  if (kind === 'pick') { ping(t, 2700, 0.06, 0.06, out); hiss(t, 4200, 3, 0.05, 0.025, out); }
+  if (kind === 'launch') {
+    // a flick of the finger, a rush of air, and the glass ringing
+    hiss(t, 3200, 2, 0.32, 0.035, out);
+    hiss(t, 600, 1.1, 0.12 + 0.2 * k, 0.14 + 0.12 * k, out, 2600);
+    ping(t, 3150, 0.05 + 0.05 * k, 0.12, out);
+  }
+  if (kind === 'knock') {
+    // glass striking painted wood
+    hiss(t, 1500 + Math.random() * 400, 2.2, 0.15 + 0.5 * k, 0.05, out);
+    ping(t, 480 + Math.random() * 140, 0.08 + 0.3 * k, 0.08, out, 'triangle');
+    ping(t, 3300 + Math.random() * 500, 0.04 + 0.14 * k, 0.14, out);
+  }
+  if (kind === 'clink') { ping(t, 2850 + Math.random() * 300, 0.06 + 0.24 * k, 0.32, out); ping(t, 4700 + Math.random() * 300, 0.03 + 0.12 * k, 0.24, out); }
+  if (kind === 'bump') { ping(t, 150, 0.08 + 0.35 * k, 0.12, out); ping(t, 3000, 0.02 + 0.08 * k, 0.16, out); hiss(t, 900, 1, 0.12 * k + 0.02, 0.05, out); }
+  if (kind === 'edge') ping(t, 230, 0.05 + 0.15 * k, 0.09, out, 'triangle');
+}
+function setRoll(speed) {
+  if (!audio || !rollGain) return;
+  const t = audio.currentTime, s = Math.min(1, speed / 10);
+  rollGain.gain.setTargetAtTime(soundOn ? s * 0.16 : 0, t, 0.06);
+  rollFilter.frequency.setTargetAtTime(220 + s * 520, t, 0.06);
+}
+function clack(p, loud = 1) {
+  if (!audio || !soundOn) return;
+  const now = performance.now();
+  if (now - lastClack < 14) return;
+  lastClack = now;
+  const t = audio.currentTime, big = p.kind === 'home';
+  const pan = audio.createStereoPanner();
+  pan.pan.value = THREE.MathUtils.clamp((toScreen(p.pos)[0] / view.w) * 2 - 1, -1, 1) * 0.7;
+  pan.connect(master);
+  const src = audio.createBufferSource();
+  src.buffer = noise;
+  const bp = audio.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = big ? 700 : 2000 + Math.random() * 1500;
+  bp.Q.value = big ? 1.2 : 2.6;
+  const ng = audio.createGain();
+  ng.gain.setValueAtTime(0.0001, t);
+  ng.gain.exponentialRampToValueAtTime((big ? 0.9 : 0.45) * loud, t + 0.002);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + (big ? 0.18 : 0.06));
+  src.connect(bp).connect(ng).connect(pan);
+  src.start(t);
+  const osc = audio.createOscillator();
+  osc.type = 'triangle';
+  const f0 = big ? 190 : 820 + Math.random() * 380;
+  osc.frequency.setValueAtTime(f0, t);
+  osc.frequency.exponentialRampToValueAtTime(f0 * 0.6, t + 0.05);
+  const og = audio.createGain();
+  og.gain.setValueAtTime(0.0001, t);
+  og.gain.exponentialRampToValueAtTime((big ? 0.5 : 0.18) * loud, t + 0.003);
+  og.gain.exponentialRampToValueAtTime(0.0001, t + (big ? 0.25 : 0.07));
+  osc.connect(og).connect(pan);
+  osc.start(t);
+  osc.stop(t + 0.3);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Physics (Rapier, loaded after the page shows)
+// ---------------------------------------------------------------------------------------------
+let RAPIER = null, world = null;
+const marbles = [];
+const pending = [];
+// collision groups: (member << 16) | collides-with
+const GROUP_PIECE = (0x1 << 16) | 0xffff, GROUP_MARBLE = (0x2 << 16) | 0xffff, GROUP_EDGE = (0x4 << 16) | 0x2;
+let edges = null;
+
+// Invisible edges along the four sides of the screen, so a marble bounces back instead of
+// rolling off the page. They are the screen itself, so a marble can start anywhere you can
+// press (an edge above the caption stopped throws from the bottom). Only marbles touch them.
+function buildEdges() {
+  if (!world) return;
+  if (edges) world.removeRigidBody(edges);
+  edges = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+  const pts = [[0, 0], [view.w, 0], [view.w, view.h], [0, view.h]].map(([x, y]) => floorAt(x, y));
+  if (pts.some((q) => !q)) return;
+  const centre = pts.reduce((c, q) => c.add(q), new THREE.Vector3()).multiplyScalar(0.25);
+  for (let i = 0; i < 4; i++) {
+    const a = pts[i], b = pts[(i + 1) % 4];
+    const dx = b.x - a.x, dz = b.z - a.z, len = Math.hypot(dx, dz);
+    const n = new THREE.Vector3(-dz / len, 0, dx / len);
+    const mid = a.clone().add(b).multiplyScalar(0.5);
+    if (n.dot(mid.clone().sub(centre)) < 0) n.negate();
+    const at = mid.addScaledVector(n, 0.5);
+    world.createCollider(
+      RAPIER.ColliderDesc.cuboid(len / 2 + 1, 1.5, 0.5)
+        .setTranslation(at.x, 1.5, at.z)
+        .setRotation(new THREE.Quaternion().setFromAxisAngle(Y, Math.atan2(-dz, dx)))
+        .setRestitution(0.55).setFriction(0.1)
+        .setCollisionGroups(GROUP_EDGE),
+      edges,
+    );
+  }
+}
+const state = { mode: 'boot', started: false, arrived: false, down: 0, queued: null, standT0: 0, standEnd: 0, after: null };
+
+async function startPhysics() {
+  RAPIER = await import(RAPIER_URL);
+  await RAPIER.init();
+  world = new RAPIER.World({ x: 0, y: -GRAVITY, z: 0 });
+  world.timestep = 1 / 120;
+  world.numSolverIterations = 6;
+  world.createCollider(RAPIER.ColliderDesc.cuboid(120, 0.5, 120).setTranslation(0, -0.5, 0).setFriction(0.75));
+  // The pieces never sleep: a sleeping domino soaks up the hit for a step before it wakes,
+  // and the run crawls instead of picking up speed.
+  for (const p of pieces) {
+    p.body = world.createRigidBody(
+      RAPIER.RigidBodyDesc.dynamic()
+        .setTranslation(p.restPos.x, p.restPos.y, p.restPos.z)
+        .setRotation(p.restQuat)
+        .setCanSleep(false)
+        .setLinearDamping(0.02)
+        .setAngularDamping(0.05),
+    );
+    world.createCollider(
+      RAPIER.ColliderDesc.cuboid(p.w / 2, p.h / 2, p.t / 2).setDensity(p.kind === 'home' ? 0.45 : 1).setFriction(0.45).setRestitution(0.02).setCollisionGroups(GROUP_PIECE),
+      p.body,
+    );
+  }
+  buildEdges();
+  if (state.mode === 'static') settle();
+}
+
+function settle() {
+  // Put every body on its resting pose, asleep, and hand the scene to physics.
+  for (const p of pieces) {
+    p.pos.copy(p.restPos); p.quat.copy(p.restQuat); p.up.set(0, 1, 0);
+    p.tilt = 0; p.fired = false; p.down = false; p.dir = 0; p.slept = false;
+    draw(p);
+    if (p.body) {
+      p.body.setTranslation(p.restPos, false);
+      p.body.setRotation(p.restQuat, false);
+      p.body.setLinvel({ x: 0, y: 0, z: 0 }, false);
+      p.body.setAngvel({ x: 0, y: 0, z: 0 }, false);
+    }
+  }
+  dominoMesh.instanceMatrix.needsUpdate = true;
+  state.down = 0;
+  state.arrived = false;
+  pending.length = 0;
+  $('home').classList.remove('arrived');
+  $('sub').textContent = 'Give the first block a push and watch your way home unfold.';
+  state.mode = world ? 'play' : 'static';
+  showReset(false);   // nothing to stand up until something falls
+  for (const m of marbles) if (m.queued && !m.dying) { const q = m.queued; m.queued = null; release(m, q.vel, q.fresh); }
+  hideStart(false);
+  if (world && state.queued) { const q = state.queued; state.queued = null; q(); }
+}
+
+function standUp({ intro = false } = {}) {
+  for (const m of [...marbles]) removeMarble(m);
+  // the copy goes back at once, not when the last block is up
+  state.arrived = false;
+  $('home').classList.remove('arrived');
+  $('sub').textContent = 'Give the first block a push and watch your way home unfold.';
+  pending.length = 0;
+  const now = performance.now();
+  const spacing = intro ? 1500 / MAX_DEPTH : 1100 / MAX_DEPTH;
+  for (const p of pieces) {
+    p.fromPos = intro ? lyingPos(p) : p.pos.clone();
+    p.fromQuat = intro ? lyingQuat(p) : p.quat.clone();
+    p.delay = p.depth * spacing;
+    if (p.kind === 'home') p.delay += 120;
+    // already standing pieces stay put
+    p.still = !intro && p.tilt < UPRIGHT && p.pos.distanceTo(p.restPos) < 0.02;
+  }
+  state.standT0 = now;
+  state.standEnd = now + MAX_DEPTH * spacing + 600;
+  state.mode = 'stand';
+  hideStart(false);
+}
+
+const easeOut = (k) => 1 - Math.pow(1 - k, 3);
+function animateStand(now) {
+  const DUR = 460;
+  for (const p of pieces) {
+    if (p.still) continue;
+    const k = THREE.MathUtils.clamp((now - state.standT0 - p.delay) / DUR, 0, 1);
+    const e = easeOut(k);
+    p.pos.lerpVectors(p.fromPos, p.restPos, e);
+    p.pos.y += Math.sin(Math.PI * k) * 0.35 * p.h;
+    p.quat.slerpQuaternions(p.fromQuat, p.restQuat, e);
+    draw(p);
+  }
+  dominoMesh.instanceMatrix.needsUpdate = true;
+  if (now >= state.standEnd) settle();
+}
+
+function nudge(id, dir, speed) {
+  const p = pieces[id];
+  if (state.mode !== 'play' || !p.body || p.fired) return;
+  const b = p.body;
+  b.wakeUp();
+  const m = b.mass() * speed * dir;
+  const at = b.translation();
+  const top = { x: at.x + p.up.x * p.h / 2, y: at.y + p.up.y * p.h / 2, z: at.z + p.up.z * p.h / 2 };
+  b.applyImpulseAtPoint({ x: p.fwd.x * m, y: 0, z: p.fwd.z * m }, top, true);
+}
+
+// A tap tips a block toward the neighbours that are still standing, so it always falls into the
+// chain. At the end of a run (the top or bottom of a stem, the end of a diagonal) that means
+// backwards; in the middle it means along the run.
+// The first block rocks forward a few degrees every few seconds until something falls, so it
+// reads as the one to push. A hovered block leans the way a click would tip it.
+const IDLE_LEAN = THREE.MathUtils.degToRad(7), HOVER_LEAN = THREE.MathUtils.degToRad(4), HOVER_LIFT = 0.16;
+const leaning = new Set();
+function updateLeans(now, dt) {
+  if (state.mode !== 'play') {
+    for (const p of leaning) { p.leanNow = 0; p.liftNow = 0; draw(p); }
+    leaning.clear();
+    hoverShadow.material.opacity = 0;
+    return;
+  }
+  const first = pieces[START];
+  const targets = new Map();   // piece -> [lean, lift]
+  if (startShown && hovered !== START && !reduceMotion.matches) {
+    const k = (now % 2600) / 2600;
+    targets.set(first, [k < 0.4 ? Math.sin((k / 0.4) * Math.PI) * IDLE_LEAN : 0, 0]);
+  }
+  const hp = hovered >= 0 && !pieces[hovered].fired && pieces[hovered].tilt < UPRIGHT ? pieces[hovered] : null;
+  if (hp) targets.set(hp, [HOVER_LEAN * tapDir(hp), HOVER_LIFT]);
+  const ease = Math.min(1, dt * 14);
+  for (const p of new Set([...leaning, ...targets.keys()])) {
+    const [lean, lift] = p.fired || p.tilt > UPRIGHT ? [0, 0] : targets.get(p) ?? [0, 0];
+    p.leanNow = p.fired ? 0 : (p.leanNow || 0) + (lean - (p.leanNow || 0)) * ease;
+    p.liftNow = p.fired ? 0 : (p.liftNow || 0) + (lift - (p.liftNow || 0)) * ease;
+    if (Math.abs(p.leanNow) < 0.0005 && Math.abs(p.liftNow) < 0.001 && !targets.has(p)) { p.leanNow = 0; p.liftNow = 0; leaning.delete(p); } else leaning.add(p);
+    draw(p);
+  }
+  dominoMesh.instanceMatrix.needsUpdate = true;
+  // the soft shadow follows the hovered block and grows with its lift
+  const sp = hp ?? [...leaning].find((p) => p.liftNow > 0.005);
+  const lift = sp ? sp.liftNow : 0;
+  hoverShadow.material.opacity = Math.min(1, lift / HOVER_LIFT);
+  if (sp) {
+    hoverShadow.position.set(sp.pos.x, 0.005, sp.pos.z);
+    hoverShadow.quaternion.copy(sp.restQuat);
+    hoverShadow.scale.set(sp.w * 2.1 * (1 + lift), 1, (sp.t * 2 + 0.9) * (1 + lift));
+  }
+}
+function tapDir(p) {
+  const standing = (l) => !pieces[l.id].fired && pieces[l.id].tilt < UPRIGHT;
+  if (p.next.some(standing)) return 1;
+  if (p.prev.some(standing)) return -1;
+  return p.next.length ? 1 : -1;
+}
+function pushAlong(id, dirVec, speed = 0.75) {
+  // Push a domino at its top in any direction on the floor (a flick).
+  const p = pieces[id];
+  if (state.mode !== 'play' || !p.body) return;
+  const b = p.body;
+  b.wakeUp();
+  const m = b.mass() * speed;
+  const at = b.translation();
+  b.applyImpulseAtPoint({ x: dirVec.x * m, y: 0, z: dirVec.z * m }, { x: at.x + p.up.x * p.h / 2, y: at.y + p.up.y * p.h / 2, z: at.z + p.up.z * p.h / 2 }, true);
+}
+
+// "Stand them up" appears beside "Back to home" once something falls. Back to home glides over
+// to make room (and back again) rather than jumping.
+function showReset(show) {
+  const btn = $('reset'), home = $('home');
+  if (btn.hidden === !show) return;
+  const before = home.getBoundingClientRect().left;
+  btn.hidden = !show;
+  const dx = before - home.getBoundingClientRect().left;
+  if (dx && !reduceMotion.matches) home.animate([{ transform: `translateX(${dx}px)` }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.22, .8, .24, 1)' });
+}
+
+function fire(p, now) {
+  p.fired = true;
+  showReset(true);
+  const hl = Math.hypot(p.up.x, p.up.z) || 1;
+  const along = (p.up.x * p.fwd.x + p.up.z * p.fwd.z) / hl;
+  p.dir = along > 0.55 ? 1 : along < -0.55 ? -1 : 0;
+  clack(p);
+  hideStart(true);
+  if (!p.dir) return;
+  // Junctions get their tap straight away. Along a run, physics does the work; the tap only
+  // comes if the next domino still hasn't gone (a weak hit can leave it leaning a few degrees,
+  // propped against the one that hit it).
+  for (const l of p.dir > 0 ? p.next : p.prev) {
+    const child = pieces[l.id];
+    const speed = child.kind === 'home' ? 1.1 : 0.5;
+    if (l.assist) pending.push({ at: now + 20, id: l.id, dir: p.dir, speed });
+    else for (const wait of [350, 900]) pending.push({ at: now + wait, id: l.id, dir: p.dir, speed, only: () => !child.fired });
+  }
+}
+
+function runPending(now) {
+  for (let i = pending.length - 1; i >= 0; i--) {
+    const job = pending[i];
+    if (now < job.at) continue;
+    pending.splice(i, 1);
+    if (!job.only || job.only()) nudge(job.id, job.dir, job.speed);
+  }
+}
+
+function readPhysics(now) {
+  for (const p of pieces) {
+    const b = p.body;
+    const asleep = b.isSleeping();
+    if (asleep && p.slept) continue;
+    p.slept = asleep;
+    const t = b.translation(), r = b.rotation();
+    p.pos.set(t.x, t.y, t.z);
+    p.quat.set(r.x, r.y, r.z, r.w);
+    p.up.set(0, 1, 0).applyQuaternion(p.quat);
+    p.tilt = Math.acos(THREE.MathUtils.clamp(p.up.y, -1, 1));
+    if (!p.fired && p.tilt > TRIGGER) fire(p, now);
+    if (!p.down && p.tilt > DOWN) {
+      p.down = true;
+      if (p.kind === 'home') arrive(); else state.down++;
+    }
+    draw(p);
+  }
+  dominoMesh.instanceMatrix.needsUpdate = true;
+  readMarbles(now);
+}
+
+// A marble is held where you pressed until you let go. Then it rolls, and every time its velocity
+// jumps it has hit something: a block, another marble, the floor after a drop, or an edge.
+const MAX_MARBLES = 6;
+function newMarble(at) {
+  const live = marbles.filter((m) => !m.dying && !m.held);
+  if (live.length >= MAX_MARBLES) removeMarble(live[0]);
+  const body = world.createRigidBody(
+    RAPIER.RigidBodyDesc.dynamic()
+      .setTranslation(at.x, MARBLE_R, at.z)
+      .setCcdEnabled(true)
+      .setCanSleep(false)
+      .setLinearDamping(0.42)
+      .setAngularDamping(0.35),
+  );
+  world.createCollider(RAPIER.ColliderDesc.ball(MARBLE_R).setDensity(1.6).setFriction(0.5).setRestitution(0.35).setCollisionGroups(GROUP_MARBLE), body);
+  const mesh = marbleMesh();
+  mesh.position.set(at.x, MARBLE_R, at.z);
+  mesh.scale.setScalar(0.001);
+  const blob = new THREE.Mesh(blobGeo, new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false }));
+  placeBlob(blob, at.x, MARBLE_R, at.z);
+  scene.add(mesh, blob);
+  const m = { body, mesh, blob, held: true, holdAt: at.clone().setY(0), v: new THREE.Vector3(), hitAt: 0, born: performance.now(), dying: 0 };
+  marbles.push(m);
+  return m;
+}
+function hold(m) {
+  m.held = true;
+  m.holdAt = m.mesh.position.clone().setY(0);
+  m.v.set(0, 0, 0);
+}
+function launch(m, vel) {
+  m.held = false;
+  marbleTipUsed = true;
+  m.body.setTranslation({ x: m.holdAt.x, y: MARBLE_R, z: m.holdAt.z }, true);
+  m.body.setLinvel(vel, true);
+  m.body.setAngvel({ x: vel.z / MARBLE_R, y: 0, z: -vel.x / MARBLE_R }, true);
+  m.v.copy(vel);
+}
+function drop(m) {
+  m.held = false;
+  m.body.setTranslation({ x: m.holdAt.x, y: 2.6, z: m.holdAt.z }, true);
+  m.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+  m.v.set(0, 0, 0);
+}
+// Let go of a marble: roll it, drop it (a tap on the floor), or just put it down. While the
+// blocks are standing up it waits and goes the moment they are back.
+function release(m, vel, fresh) {
+  if (state.mode !== 'play') { m.queued = { vel, fresh }; return; }
+  if (!vel) { if (fresh) drop(m); else m.held = false; return; }
+  launch(m, vel);
+  sfx('launch', Math.min(1, vel.length() / 12.5), m.mesh.position);
+}
+function removeMarble(m) {
+  if (m.dying) return;
+  m.dying = performance.now();
+  if (world) world.removeRigidBody(m.body);
+}
+function holdMarbles() {
+  for (const m of marbles) {
+    if (!m.held || m.dying) continue;
+    m.body.setTranslation({ x: m.holdAt.x, y: MARBLE_R, z: m.holdAt.z }, true);
+    m.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    m.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+  }
+}
+// A slow marble under the caption gets a gentle push out from under the words; a fast one
+// just passes through the frost.
+const capCentre = new THREE.Vector3();
+let capRect = null;
+function nudgeFromCaption(m, v) {
+  if (!capRect || Math.hypot(v.x, v.z) > 2.5) return;
+  const [x, y] = toScreen(m.mesh.position);
+  if (x < capRect.left - 16 || x > capRect.right + 16 || y < capRect.top - 16 || y > capRect.bottom + 16) return;
+  const dx = m.mesh.position.x - capCentre.x, dz = m.mesh.position.z - capCentre.z;
+  const len = Math.hypot(dx, dz) || 1;
+  const k = m.body.mass() * 0.09;
+  m.body.applyImpulse({ x: (dx / len) * k, y: 0, z: (dz / len) * k }, true);
+}
+function readMarbles(now) {
+  let fastest = 0;
+  for (let i = marbles.length - 1; i >= 0; i--) {
+    const m = marbles[i];
+    if (m.dying) {
+      const k = Math.min(1, (now - m.dying) / 220);
+      m.mesh.scale.setScalar(Math.max(0.001, 1 - k));
+      m.blob.material.opacity = 1 - k;
+      if (k >= 1) { scene.remove(m.mesh, m.blob); marbles.splice(i, 1); }
+      continue;
+    }
+    const t = m.body.translation(), r = m.body.rotation();
+    m.mesh.position.set(t.x, t.y, t.z);
+    m.mesh.quaternion.set(r.x, r.y, r.z, r.w);
+    const pop = Math.min(1, (now - m.born) / 180);
+    m.mesh.scale.setScalar(Math.max(0.001, 1 + 2.2 * Math.pow(pop - 1, 3) + 1.2 * Math.pow(pop - 1, 2)));
+    const lift = Math.max(0, t.y - MARBLE_R);
+    placeBlob(m.blob, t.x, t.y, t.z);
+    if (Math.abs(t.x) > 80 || Math.abs(t.z) > 60 || t.y < -5) { removeMarble(m); continue; }
+    if (m.held) continue;
+    const v = m.body.linvel();
+    const dvx = v.x - m.v.x, dvy = v.y - m.v.y, dvz = v.z - m.v.z;
+    const dv = Math.hypot(dvx, dvy, dvz);
+    m.v.set(v.x, v.y, v.z);
+    if (lift < 0.06) fastest = Math.max(fastest, Math.hypot(v.x, v.z));
+    nudgeFromCaption(m, v);
+    if (dv < 1.1 || now - m.hitAt < 60) continue;
+    m.hitAt = now;
+    const k = Math.min(1, dv / 9);
+    const at = m.mesh.position;
+    let piece = null, best = 1.1;
+    for (const p of pieces) {
+      const d = Math.hypot(p.pos.x - at.x, p.pos.z - at.z) - (p.kind === 'home' ? 0.9 : 0);
+      if (d < best && p.pos.y < at.y + 1.6) { best = d; piece = p; }
+    }
+    if (piece) sfx('knock', piece.kind === 'home' ? k * 0.7 : k, at);
+    else if (marbles.some((o) => o !== m && !o.dying && o.mesh.position.distanceTo(at) < MARBLE_R * 2 + 0.1)) sfx('clink', k, at);
+    else if (Math.abs(dvy) > Math.hypot(dvx, dvz)) sfx('bump', k, at);
+    else sfx('edge', k, at);
+  }
+  setRoll(fastest);
+}
+
+// ---------------------------------------------------------------------------------------------
+// UI state
+// ---------------------------------------------------------------------------------------------
+let arrivedAt = 0;
+const pointerAim = new THREE.Vector2();
+function arrive() {
+  if (state.arrived) return;
+  state.arrived = true;
+  arrivedAt = performance.now();
+  $('home').classList.add('arrived');
+  $('sub').textContent = 'Every block went over. The way back is open.';
+  $('live').textContent = 'The run reached home. The way back is open.';
+}
+
+let startShown = true, marbleTipUsed = false;
+function hideStart(hide) {
+  startShown = !hide;
+}
+const keyboard = () => !(coarse.matches || touched) && matchMedia('(hover: hover)').matches;
+
+// The hints are one line written on the floor itself: "Click a block or press Space · drag the
+// floor to roll a marble". It is real HTML text mapped onto the floor plane with a perspective
+// transform (a homography from four projected corners), so it lies flat like paint and stays
+// crisp. It goes in the biggest empty stretch of floor (above the 404, or under the caption on
+// a tall phone). Each half drops out once you have done it; where one line would come out too
+// small it breaks into two.
+let floorTextOn = false;
+function quadTransform(w, h, q) {
+  // maps the element's (0,0) (w,0) (w,h) (0,h) onto the screen points q[0..3]
+  const [[x0, y0], [x1, y1], [x2, y2], [x3, y3]] = q;
+  const dx1 = x1 - x2, dx2 = x3 - x2, dy1 = y1 - y2, dy2 = y3 - y2;
+  const sx = x0 - x1 + x2 - x3, sy = y0 - y1 + y2 - y3;
+  const det = dx1 * dy2 - dx2 * dy1;
+  const g = (sx * dy2 - dx2 * sy) / det, k = (dx1 * sy - sx * dy1) / det;
+  const a = x1 - x0 + g * x1, b = x3 - x0 + k * x3, d = y1 - y0 + g * y1, e = y3 - y0 + k * y3;
+  return `matrix3d(${a / w}, ${d / w}, 0, ${g / w}, ${b / h}, ${e / h}, 0, ${k / h}, 0, 0, 1, 0, ${x0}, ${y0}, 0, 1)`;
+}
+function placeFloorText() {
+  const el = $('floorText');
+  floorTextOn = false;
+  const cap = $('caption').getBoundingClientRect();
+  const art = projected(view.w, view.h);
+  const above = { y0: 24, y1: art.y0 - 8 }, below = { y0: cap.bottom + 24, y1: view.h - 56 };
+  const region = above.y1 - above.y0 >= below.y1 - below.y0 ? above : below;
+  if (region.y1 - region.y0 < 44) { el.classList.remove('on'); return; }
+  // size it in world units so its letters come out about 12 px on screen (the element is set at
+  // 40 px), smaller only if the region is too short or the line too wide
+  let mid = floorAt(view.w / 2, (region.y0 + region.y1) / 2);
+  if (!mid) return;
+  const [ax] = toScreen(tmp.set(mid.x - 0.5, 0, mid.z)), [bx] = toScreen(tmp.set(mid.x + 0.5, 0, mid.z));
+  const perUnit = Math.abs(bx - ax);
+  const W = el.offsetWidth, H = el.offsetHeight;
+  // aimed at the width a 15–16 px line would have, which the floor's slant brings to ~12 px tall;
+  // on a phone a little smaller, so the hint stays quieter than the 404
+  const TEXT_PX = view.w < 640 ? 13.5 : 16;
+  let ww = Math.min(W * (TEXT_PX / 40), view.w * (view.w < 640 ? 0.72 : 0.9)) / perUnit;
+  const fits = (region.y1 - region.y0) * 0.8 / (H / W * perUnit * Math.sin(ELEV));
+  ww = Math.min(ww, fits);
+  const hh = ww * H / W;
+  // Above the 404 it sits close over the art (a short step up from it, not adrift in the middle
+  // of the empty band); below the caption it sits a short step under it.
+  const tall = hh * perUnit * Math.sin(ELEV);
+  const gap = Math.min(36, (region.y1 - region.y0 - tall) / 2);
+  const cy = region === above ? region.y1 - gap - tall / 2 : region.y0 + gap + tall / 2;
+  mid = floorAt(view.w / 2, cy) || mid;
+  const q = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sz]) => toScreen(tmp.set(mid.x + sx * ww / 2, 0, mid.z + sz * hh / 2)));
+  // Painted dead on the floor, the line fans out: the left half leans like italics and the right
+  // half leans back. Keep the depth but take most of the fan out, so it reads as upright type.
+  for (const [far, near] of [[0, 3], [1, 2]]) q[far][0] = q[near][0] + (q[far][0] - q[near][0]) * 0.3;
+  el.style.transform = quadTransform(W, H, q);
+  floorTextOn = true;
+  return (q[3][1] - q[0][1]) / el.children.length * (40 / (H / el.children.length));   // one line's letter height on screen
+}
+let floorKey = '';
+function floorParts() {
+  const parts = [];
+  if (startShown) parts.push(keyboard() ? 'Click a block or press Space' : 'Tap a block');
+  // on a phone the line is shorter, so it stays quieter than the 404 above it
+  if (!marbleTipUsed) parts.push(keyboard() ? 'drag the floor to roll a marble' : 'swipe to roll a marble');
+  return parts;
+}
+function layFloorText(parts, split) {
+  const el = $('floorText');
+  el.replaceChildren(...(split ? parts : [parts.join(' · ')]).map((t) => Object.assign(document.createElement('div'), { textContent: t })));
+  return placeFloorText();
+}
+function showFloorText() {
+  const parts = floorParts();
+  const key = parts.join('|') + view.w + 'x' + view.h;
+  if (key !== floorKey) {
+    floorKey = key;
+    // one line on wider screens; on a phone a line per hint
+    if (parts.length) layFloorText(parts, view.w < 640 && parts.length > 1);
+  }
+  $('floorText').classList.toggle('on', floorTextOn && parts.length > 0 && state.mode === 'play');
+}
+
+function run() {
+  // Push the first domino; if anything has fallen, stand them all up first so the run is whole.
+  ensureAudio();
+  const first = pieces[START];
+  const whole = pieces.every((p) => p.tilt < UPRIGHT);
+  if (state.mode === 'play' && whole && !first.fired) { nudge(START, 1, 1.1); return; }
+  state.queued = () => nudge(START, 1, 1.1);
+  if (state.mode === 'play') standUp();
+}
+function reset() {
+  ensureAudio();
+  if (state.mode === 'play' || state.mode === 'static') standUp();
+}
+
+$('reset').addEventListener('click', reset);
+$('sound').addEventListener('click', () => {
+  soundOn = !soundOn;
+  ensureAudio();
+  if (master) master.gain.value = soundOn ? 0.7 : 0;
+  $('sound').textContent = soundOn ? 'Sound on' : 'Sound off';
+  $('sound').setAttribute('aria-pressed', String(soundOn));
+});
+addEventListener('keydown', (e) => {
+  if (e.target.closest?.('button, a, input')) return;
+  if (e.code === 'Space') { e.preventDefault(); run(); }
+  else if (e.key === 'r' || e.key === 'R') reset();
+});
+let touched = false;   // a finger has been used here, whatever the media query says
+
+// ---------------------------------------------------------------------------------------------
+// Pointer: tap a block to push it along its run, drag a block to flick it any way, drag the
+// floor to roll a marble, tap the floor to drop one. Once home has fallen, tap it to go home.
+// ---------------------------------------------------------------------------------------------
+const ray = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+const ground = new THREE.Plane(Y, 0);
+let press = null, hovered = -1;
+
+function setRay(e) {
+  ndc.set((e.clientX / view.w) * 2 - 1, -(e.clientY / view.h) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+}
+function floorPoint(e, out = new THREE.Vector3()) {
+  setRay(e);
+  return ray.ray.intersectPlane(ground, out);
+}
+function floorAt(x, y) { return floorPoint({ clientX: x, clientY: y }); }
+function pickMarble(e) {
+  setRay(e);
+  const live = marbles.filter((m) => !m.dying);
+  const hit = ray.intersectObjects(live.map((m) => m.mesh), true)[0];
+  if (hit) return live.find((m) => m.mesh === hit.object.parent) ?? null;
+  // generous on touch, and marbles are small: the nearest one within a fingertip
+  const tol = e.pointerType === 'touch' || coarse.matches ? 30 : 14;
+  let best = null, bestD = tol;
+  for (const m of live) {
+    const [x, y] = toScreen(m.mesh.position);
+    const d = Math.hypot(x - e.clientX, y - e.clientY);
+    if (d < bestD) { bestD = d; best = m; }
+  }
+  return best;
+}
+function pick(e) {
+  setRay(e);
+  const hit = ray.intersectObject(dominoMesh, false)[0];
+  if (hit && hit.instanceId != null) {
+    const p = dominoes[hit.instanceId];
+    if (p.tilt < UPRIGHT) return p.id;
+  }
+  // Generous on touch: the nearest standing domino within a fingertip of the press.
+  const tol = e.pointerType === 'touch' || coarse.matches ? 26 : 10;
+  let best = -1, bestD = tol;
+  for (const p of dominoes) {
+    if (p.tilt >= UPRIGHT) continue;
+    const [x, y] = toScreen(tmp.copy(p.pos));
+    const dd = Math.hypot(x - e.clientX, y - e.clientY);
+    if (dd < bestD) { bestD = dd; best = p.id; }
+  }
+  return best;
+}
+function overHome(e) {
+  if (!state.arrived) return false;
+  setRay(e);
+  return ray.intersectObject(homeMesh, true).length > 0;
+}
+// The hovered block answers by itself (see updateLeans): it rises a little, tilts the way a click
+// would tip it, and the shadow under it deepens. No colour change, no extra UI.
+function highlight(id) {
+  hovered = id;
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  if (!e.isPrimary) return;
+  ensureAudio();
+  if (e.pointerType === 'touch') touched = true;
+  canvas.setPointerCapture(e.pointerId);
+  if (overHome(e)) { press = { kind: 'home', x: e.clientX, y: e.clientY }; return; }
+  // marbles work while the blocks stand back up too; only pushing blocks waits
+  if (state.mode !== 'play' && !(state.mode === 'stand' && world)) return;
+  const caught = pickMarble(e);
+  if (caught) {
+    hold(caught);
+    press = { kind: 'marble', m: caught, fresh: false, x: e.clientX, y: e.clientY };
+    sfx('pick', 0.5, caught.mesh.position);
+    canvas.style.cursor = 'grabbing';
+    return;
+  }
+  const id = state.mode === 'play' ? pick(e) : -1;
+  const at = floorPoint(e);
+  if (id >= 0) press = { kind: 'domino', id, x: e.clientX, y: e.clientY, at };
+  else if (at) {
+    const m = newMarble(at);
+    press = { kind: 'marble', m, fresh: true, x: e.clientX, y: e.clientY };
+    sfx('pick', 0.5, at);
+    canvas.style.cursor = 'grabbing';
+  }
+});
+const aimDir = new THREE.Vector3();
+function aimFrom(m, to) {
+  const dx = to.x - m.holdAt.x, dz = to.z - m.holdAt.z;
+  const len = Math.min(Math.hypot(dx, dz), 7);
+  aimDir.set(dx, 0, dz).normalize();
+  return len;
+}
+
+addEventListener('pointermove', (e) => pointerAim.set((e.clientX / view.w) * 2 - 1, 1 - (e.clientY / view.h) * 2));
+canvas.addEventListener('pointermove', (e) => {
+  if (!e.isPrimary) return;
+  if (press?.kind === 'marble') {
+    const to = floorPoint(e);
+    if (to) showAim(press.m.holdAt, aimDir, aimFrom(press.m, to));
+    return;
+  }
+  if (press || e.pointerType === 'touch') return;
+  if (overHome(e)) { highlight(-1); canvas.style.cursor = 'pointer'; return; }
+  if (state.mode === 'play' && pickMarble(e)) { highlight(-1); canvas.style.cursor = 'grab'; return; }
+  const id = state.mode === 'play' ? pick(e) : -1;
+  highlight(id);
+  canvas.style.cursor = id >= 0 ? 'pointer' : state.mode === 'play' ? 'grab' : 'default';
+});
+
+canvas.addEventListener('pointerup', (e) => {
+  if (!press || !e.isPrimary) return;
+  const p = press;
+  press = null;
+  hideAim();
+  canvas.style.cursor = '';
+  const moved = Math.hypot(e.clientX - p.x, e.clientY - p.y);
+  if (p.kind === 'home') { if (moved < 12 && overHome(e)) location.href = $('home').href; return; }
+  if (p.kind === 'marble') {
+    if (p.m.dying) return;
+    const to = floorPoint(e);
+    const len = to ? aimFrom(p.m, to) : 0;
+    release(p.m, len < 0.4 ? null : aimDir.clone().multiplyScalar(3 + len * 1.35), p.fresh);
+    return;
+  }
+  if (state.mode !== 'play') return;
+  if (p.kind === 'domino') {
+    highlight(-1);
+    const to = floorPoint(e);
+    if (moved < 12 || !to || !p.at) { nudge(p.id, tapDir(pieces[p.id]), 0.75); return; }
+    const dir = to.sub(p.at).setY(0);
+    if (dir.lengthSq() < 0.01) { nudge(p.id, tapDir(pieces[p.id]), 0.75); return; }
+    pushAlong(p.id, dir.normalize(), 0.8);
+    return;
+  }
+});
+canvas.addEventListener('pointercancel', () => {
+  if (press?.kind === 'marble') press.m.held = false;
+  press = null;
+  hideAim();
+});
+canvas.addEventListener('pointerleave', () => { if (!press) highlight(-1); });
+
+// ---------------------------------------------------------------------------------------------
+// Loop
+// ---------------------------------------------------------------------------------------------
+let last = performance.now(), acc = 0, slow = 0, frames = 0;
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  // two seconds under ~45 fps steps the pixel ratio down (not below 1) and shadows to 1024
+  frames++;
+  slow = dt > 1 / 45 ? slow + dt : Math.max(0, slow - dt * 0.5);
+  if (slow > 2 && renderer.getPixelRatio() > 1 && frames > 120) {
+    slow = 0;
+    renderer.setPixelRatio(Math.max(1, renderer.getPixelRatio() - 0.5));
+    if (sun.shadow.mapSize.x > 1024) { sun.shadow.mapSize.set(1024, 1024); sun.shadow.map?.dispose(); sun.shadow.map = null; }
+    fit();
+  }
+  if (state.mode === 'stand') { animateStand(now); readMarbles(now); }
+  else if (state.mode === 'play') {
+    acc += dt;
+    let n = 0;
+    while (acc >= world.timestep && n < 8) { holdMarbles(); world.step(); acc -= world.timestep; n++; }
+    if (n === 8) acc = 0;
+    readPhysics(now);
+    runPending(now);
+  }
+  updateLeans(now, dt);
+  showFloorText();
+  if (!reduceMotion.matches) {
+    const u = backdrop.material.uniforms;
+    u.uTime.value = now / 1000;
+    u.uPointer.value.lerp(pointerAim, Math.min(1, dt * 2.5));
+    u.uPulse.value = arrivedAt ? Math.max(0, 1 - (now - arrivedAt) / 2600) ** 2 * Math.min(1, (now - arrivedAt) / 300) : 0;
+  }
+  renderer.render(scene, camera);
+}
+
+fit();
+for (const p of pieces) {
+  if (!reduceMotion.matches) { p.pos.copy(lyingPos(p)); p.quat.copy(lyingQuat(p)); }
+  draw(p);
+}
+dominoMesh.instanceMatrix.needsUpdate = true;
+renderer.setAnimationLoop(frame);
+addEventListener('resize', fit);
+document.fonts?.ready.then(fit);
+requestAnimationFrame(() => canvas.classList.add('on'));
+
+if (reduceMotion.matches) settle(); else { state.mode = 'boot'; setTimeout(() => standUp({ intro: true }), 250); }
+startPhysics().catch((err) => {
+  console.error('Physics failed to load', err);
+  $('sub').textContent = 'The dominoes could not load here. The way home still works.';
+});
+
+// For the QA scripts.
+window.Domino = {
+  pieces, START, HOME_ID,
+  state: () => ({ mode: state.mode, down: state.down, total: dominoes.length, arrived: state.arrived, marbles: marbles.filter((m) => !m.dying).length, physics: !!world, pixelRatio: renderer.getPixelRatio() }),
+  marble: () => { const m = marbles.filter((q) => !q.dying).at(-1); if (!m) return null; const v = m.body.linvel(); return { x: +m.mesh.position.x.toFixed(2), y: +m.mesh.position.y.toFixed(2), z: +m.mesh.position.z.toFixed(2), speed: +Math.hypot(v.x, v.z).toFixed(2), held: m.held }; },
+  edges: () => edges ? edges.numColliders() : 0,
+  sounds: () => soundLog.slice(),
+  project: (v) => toScreen(tmp.set(v.x, v.y, v.z)),
+  marbleList: () => marbles.filter((m) => !m.dying).map((m) => ({ x: m.mesh.position.x, y: m.mesh.position.y, z: m.mesh.position.z, held: m.held })),
+  run, reset,
+  screen: (id) => toScreen(tmp.copy(pieces[id].pos)),
+  overlaps() {
+    // Footprints that intersect at rest (separating axis test on the floor rectangles).
+    const rect = (p) => {
+      const f = new THREE.Vector2(p.fwd.x, p.fwd.z), s = new THREE.Vector2(-f.y, f.x), c = new THREE.Vector2(p.restPos.x, p.restPos.z);
+      return [[1, 1], [1, -1], [-1, -1], [-1, 1]].map(([a, b]) => c.clone().addScaledVector(f, a * p.t / 2).addScaledVector(s, b * p.w / 2));
+    };
+    const axes = (r) => [r[1].clone().sub(r[0]).normalize(), r[3].clone().sub(r[0]).normalize()];
+    const apart = (a, b) => [...axes(a), ...axes(b)].some((ax) => {
+      const pa = a.map((v) => v.dot(ax)), pb = b.map((v) => v.dot(ax));
+      return Math.max(...pa) < Math.min(...pb) || Math.max(...pb) < Math.min(...pa);
+    });
+    const rs = pieces.map(rect), out = [];
+    for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) if (!apart(rs[i], rs[j])) out.push([i, j]);
+    return out;
+  },
+};
+</script>
+</body>
+</html>
