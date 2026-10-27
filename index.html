@@ -67,7 +67,7 @@
 
   .caption {
     position: absolute; left: 50%; top: 64%; transform: translateX(-50%);
-    width: min(520px, calc(100% - 2 * var(--pad)));
+    width: min(620px, calc(100% - 2 * var(--pad)));
     display: grid; justify-items: center; text-align: center;
     opacity: 0; transition: opacity .4s ease;
   }
@@ -87,12 +87,12 @@
   .bottom::before { inset: -22px calc(-1 * var(--r)) calc(-1 * var(--b)) calc(-1 * var(--l)); -webkit-mask-image: linear-gradient(transparent, #000 45%); mask-image: linear-gradient(transparent, #000 45%); }
   h1 {
     margin: 0; font-weight: 600; font-variation-settings: "wdth" 92;
-    font-size: clamp(24px, 2.4vw, 36px); line-height: 1.08; letter-spacing: -.025em; text-wrap: balance;
+    font-size: clamp(24px, 1.6vw + 12px, 46px); line-height: 1.08; letter-spacing: -.025em; text-wrap: balance;
   }
-  .caption p { margin: 10px 0 0; font-size: 15px; line-height: 1.5; color: var(--muted); text-wrap: balance; }
+  .caption p { margin: 10px 0 0; font-size: clamp(15px, .4vw + 10px, 18px); line-height: 1.5; color: var(--muted); text-wrap: balance; }
   .cta { margin-top: 22px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
   .home, .ghost {
-    font: 500 15px/1 "Bricolage Grotesque", system-ui, sans-serif; letter-spacing: -.005em;
+    font: 500 clamp(15px, .25vw + 11.5px, 17px)/1 "Bricolage Grotesque", system-ui, sans-serif; letter-spacing: -.005em;
     border-radius: 999px; padding: 13px 20px; text-decoration: none; cursor: pointer;
     transition: background-color .2s ease, border-color .2s ease, color .2s ease;
   }
@@ -118,7 +118,11 @@
   .floor-text div + div { margin-top: 9px; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-  @media (max-width: 560px) { .label { font-size: 11px; } }
+  @media (max-width: 560px) {
+    .label { font-size: 11px; }
+    .caption p { margin-top: 14px; }
+    .cta { margin-top: 30px; }
+  }
   .no-gl .floor-text, .no-gl .sound, .no-gl #reset { display: none; }
 </style>
 <script type="importmap">
@@ -143,7 +147,7 @@
     </nav>
   </main>
   <footer class="corner bottom">
-    <button type="button" class="label sound" id="sound" aria-pressed="true">Sound on</button>
+    <button type="button" class="label sound" id="sound">Mute</button>
   </footer>
 </div>
 <div class="floor-text" id="floorText" aria-hidden="true"><div>Click a block or press Space · drag the floor to roll a marble</div></div>
@@ -219,11 +223,12 @@ function addRun(curve) {
 const path = (...curves) => { const p = new THREE.CurvePath(); curves.forEach((c) => p.add(c)); return p; };
 const line = (a, b) => new THREE.LineCurve(a, b);
 
-const BAR = 1.8, TOP = -6, BOTTOM = 6;
-// A portrait screen is short of width, not height, so there the digits are condensed: the same
-// height, about three quarters of the width, and each block comes out bigger on screen.
+// A portrait screen is short of width, not height, so there the digits are condensed (about
+// three quarters of the width, so each block comes out bigger) and taller, and the camera looks
+// down more steeply: the 404 fills more of the screen's spare height.
 const NARROW = innerWidth / innerHeight < 0.75;
-const RX = NARROW ? 2.95 : 3.75, RZ = 6;        // the 0 is an ellipse
+const BAR = NARROW ? 2.1 : 1.8, TOP = NARROW ? -7 : -6, BOTTOM = -TOP;
+const RX = NARROW ? 2.95 : 3.75, RZ = BOTTOM;   // the 0 is an ellipse
 const FOUR_W = NARROW ? 6.6 : 8.5, STEM = NARROW ? 4.6 : 6, DIGIT_GAP = 3.2;
 const LEAD = NARROW ? 1.2 : 2.2;                // the lead-in before the first 4
 const LEFT = -(RX + DIGIT_GAP + FOUR_W);        // x of the first 4's left edge
@@ -236,7 +241,8 @@ function four(ox, into) {
   const L = v2(ox, BAR), A = v2(sx, TOP);
   const dir = A.clone().sub(L).normalize();
   const bar = addRun(line(L, v2(sx - GAP, BAR)));
-  const diag = addRun(line(L.clone().addScaledVector(dir, 0.7), A.clone().addScaledVector(dir, -0.75)));
+  // the diagonal stops short of the apex (further on the steeper condensed 4, or it brushes the stem)
+  const diag = addRun(line(L.clone().addScaledVector(dir, 0.7), A.clone().addScaledVector(dir, NARROW ? -1.3 : -0.75)));
   const up = addRun(line(v2(sx, BAR - GAP), v2(sx, TOP + 0.3)));
   const down = addRun(line(v2(sx, BAR + GAP), v2(sx, BOTTOM)));
   link(into, bar.first);
@@ -262,7 +268,8 @@ link(f1.bar.last, entry.first);
 // The 0 is one loop: in at its left side, up and over the top and all the way round, back up to
 // just short of where it started. The way on to the second 4 branches off its right side. (Two
 // arcs that split at the left and met head on at the right left a pile-up of crossed and
-// propped blocks there.)
+// propped blocks there.) The opening at 9 o'clock is where the run comes in: the falling block
+// passes between the loop's two ends there, and a loop closed across it got knocked sideways.
 const loop = addRun(new THREE.EllipseCurve(0, 0, RX, RZ, Math.PI + GAP / RZ, 3 * Math.PI - Math.asin(1.1 / RZ), false, 0));
 link(entry.last, loop.first, true);
 const rightmost = loop.ids.reduce((a, b) => (pieces[b].restPos.x > pieces[a].restPos.x ? b : a));
@@ -369,13 +376,15 @@ const backdrop = new THREE.Mesh(
         // away from the pointer for depth, and swell for a moment when the run reaches home
         vec2 lean = -uPointer * 0.03;
         float swell = 1.0 + 0.3 * uPulse;
-        vec2 pinkC = vec2(1.0, 1.0) + vec2(0.11 * sin(t * 0.23) - 0.05, 0.09 * sin(t * 0.17 + 1.1) - 0.03) + lean;
-        vec2 sageC = vec2(0.0, 0.0) + vec2(0.1 * sin(t * 0.19 + 2.3) + 0.04, 0.1 * sin(t * 0.26 + 0.4) + 0.03) + lean;
-        vec2 blueC = vec2(0.55, 0.0) + vec2(0.16 * sin(t * 0.15 + 2.1), 0.05 * sin(t * 0.21 + 3.0)) + lean;
-        float pink = glow(pinkC, 0.68 * (1.0 + 0.12 * sin(t * 0.29)), 0.55 * swell * (0.9 + 0.1 * sin(t * 0.31 + 0.7)));
-        float sage = glow(sageC, 0.64 * (1.0 + 0.12 * sin(t * 0.27 + 2.0)), 0.5 * swell * (0.9 + 0.1 * sin(t * 0.33 + 1.9)));
+        // blobs: each wanders a wide lava-lamp loop (two sines per axis, so the path never repeats
+        // a simple circle) and swells and shrinks as it goes
+        vec2 pinkC = vec2(0.92, 0.9) + vec2(0.2 * sin(t * 0.31) + 0.07 * sin(t * 0.73 + 1.0), 0.18 * sin(t * 0.27 + 1.1) + 0.06 * cos(t * 0.61)) + lean;
+        vec2 sageC = vec2(0.08, 0.12) + vec2(0.18 * sin(t * 0.29 + 2.3) + 0.06 * cos(t * 0.67), 0.2 * sin(t * 0.35 + 0.4) + 0.06 * sin(t * 0.79 + 2.0)) + lean;
+        vec2 blueC = vec2(0.55, 0.02) + vec2(0.3 * sin(t * 0.23 + 2.1) + 0.06 * sin(t * 0.71), 0.1 * sin(t * 0.33 + 3.0)) + lean;
+        float pink = glow(pinkC, 0.66 * (1.0 + 0.2 * sin(t * 0.43)), 0.55 * swell * (0.88 + 0.12 * sin(t * 0.47 + 0.7)));
+        float sage = glow(sageC, 0.62 * (1.0 + 0.2 * sin(t * 0.39 + 2.0)), 0.5 * swell * (0.88 + 0.12 * sin(t * 0.51 + 1.9)));
         float bluePeak = 0.46 * swell * (0.9 + 0.1 * sin(t * 0.37 + 3.1));
-        float blue = glow(blueC, 0.46 * (1.0 + 0.14 * sin(t * 0.25 + 4.0)), bluePeak);
+        float blue = glow(blueC, 0.46 * (1.0 + 0.2 * sin(t * 0.41 + 4.0)), bluePeak);
         vec3 col = uBase;
         col = mix(col, uPink, clamp(pink, 0.0, 1.0));
         col = mix(col, uSage, clamp(sage, 0.0, 1.0));
@@ -559,9 +568,10 @@ scene.add(hoverShadow);
 // would cast a solid one).
 const MARBLE_R = 0.4;
 const marbleGeo = new THREE.SphereGeometry(MARBLE_R, 48, 32);
-const glassMat = new THREE.MeshPhysicalMaterial({ color: '#ffffff', transmission: 1, thickness: 0.8, roughness: 0.02, ior: 1.5, dispersion: 0.3, attenuationColor: '#e4f3f5', attenuationDistance: 3, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 1.6 });
+// thin enough that the ribbon inside stays a ribbon (thicker glass magnified it into an all-over tint)
+const glassMat = new THREE.MeshPhysicalMaterial({ color: '#ffffff', transmission: 1, thickness: 0.42, roughness: 0.02, ior: 1.5, dispersion: 0.3, attenuationColor: '#d6e9ee', attenuationDistance: 1.6, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 2.1 });
 const vaneGeo = (() => {
-  const L = MARBLE_R * 1.55, W = MARBLE_R * 0.3;
+  const L = MARBLE_R * 1.45, W = MARBLE_R * 0.2;
   const g = new THREE.PlaneGeometry(L, W, 32, 4);
   const pos = g.attributes.position;
   for (let i = 0; i < pos.count; i++) {
@@ -573,7 +583,7 @@ const vaneGeo = (() => {
   g.computeVertexNormals();
   return g;
 })();
-const vaneMats = PALETTE.map((c) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.18, roughness: 0.35, side: THREE.DoubleSide }));
+const vaneMats = PALETTE.map((c) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.06, roughness: 0.3, side: THREE.DoubleSide }));
 const blobTex = (() => {
   const c = document.createElement('canvas');
   c.width = c.height = 128;
@@ -646,7 +656,12 @@ function showAim(from, dir, len) {
   arrowHead.material.color.copy(aimInk);
   if (len < 0.4) { hideAim(); return; }
   const path = 0.9 + len * 1.05;
-  const n = Math.min(DOTS, Math.floor(path / DOT_GAP));
+  // the path ends where the marble would meet its first standing block, arrowhead against it
+  let n = Math.min(DOTS, Math.floor(path / DOT_GAP));
+  for (let i = 0; i < n; i++) {
+    dotPos.set(from.x, AIM_Y, from.z).addScaledVector(dir, MARBLE_R + 0.3 + i * DOT_GAP);
+    if (aimBlocked(dotPos)) { n = i; break; }
+  }
   for (let i = 0; i < n; i++) {
     const t = i / Math.max(1, n - 1);
     dotPos.set(from.x, AIM_Y, from.z).addScaledVector(dir, MARBLE_R + 0.3 + i * DOT_GAP);
@@ -663,6 +678,15 @@ function showAim(from, dir, len) {
   arrowHalo.position.copy(arrowHead.position);
   arrowHalo.rotation.y = arrowHead.rotation.y;
   arrowHead.visible = arrowHalo.visible = true;
+}
+const invQ = new THREE.Quaternion(), aimLocal = new THREE.Vector3();
+function aimBlocked(at) {
+  for (const p of pieces) {
+    if (p.fired || p.tilt > 0.5) continue;   // a fallen block lies low enough to roll over
+    aimLocal.copy(at).sub(p.pos).setY(0).applyQuaternion(invQ.copy(p.quat).invert());
+    if (Math.abs(aimLocal.x) < p.w / 2 + MARBLE_R * 0.8 && Math.abs(aimLocal.z) < p.t / 2 + MARBLE_R * 0.8) return true;
+  }
+  return false;
 }
 function hideAim() { dots.count = dotHalos.count = 0; arrowHead.visible = arrowHalo.visible = false; }
 const Q_IDENTITY = new THREE.Quaternion(), tmpColor = new THREE.Color(), aimInk = new THREE.Color(), RED_C = new THREE.Color('#E63B2E');
@@ -702,8 +726,8 @@ const lyingPos = (p) => p.restPos.clone().addScaledVector(p.fwd, p.h / 2).setY(p
 // Camera: fit the whole layout (with room for fallen pieces) into the space between the
 // header and the footer, at a fixed angle from the front.
 // ---------------------------------------------------------------------------------------------
-const BOUNDS = new THREE.Box3(new THREE.Vector3(LEFT - LEAD - 0.8, 0, TOP - 1.1), new THREE.Vector3(home.restPos.x + HOME.w / 2 + 0.4, 1.2, home.restPos.z + HOME.h + 0.2));
-const ELEV = THREE.MathUtils.degToRad(56);
+const BOUNDS = new THREE.Box3(new THREE.Vector3(LEFT - LEAD - 0.8, 0, TOP - 1.1), new THREE.Vector3(home.restPos.x + HOME.w / 2 + 0.4, 1.2, Math.max(home.restPos.z + HOME.h + 0.2, BOTTOM + 1.1)));
+const ELEV = THREE.MathUtils.degToRad(NARROW ? 62 : 56);
 const corners = [];
 for (const x of [BOUNDS.min.x, BOUNDS.max.x]) for (const y of [BOUNDS.min.y, BOUNDS.max.y]) for (const z of [BOUNDS.min.z, BOUNDS.max.z]) corners.push(new THREE.Vector3(x, y, z));
 for (const x of [-1, 1]) for (const z of [-1, 1]) corners.push(home.restPos.clone().add(new THREE.Vector3(x * HOME.w / 2, HOME.h / 2, z * HOME.t / 2)));
@@ -735,7 +759,8 @@ function fit() {
   const bottomBox = document.querySelector('.bottom').getBoundingClientRect();
   const caption = $('caption');
   const capH = caption.offsetHeight;
-  const gap = Math.round(THREE.MathUtils.clamp(h * 0.02, 8, 22));
+  // a phone gets more air between the 404 and the caption; it felt crowded
+  const gap = Math.round(w < 640 ? THREE.MathUtils.clamp(h * 0.05, 24, 44) : THREE.MathUtils.clamp(h * 0.02, 8, 22));
   const area = { y0: topBox.bottom + 20, y1: bottomBox.top - 20 };
   // on wide screens the 404 keeps some air at the sides
   const band = { w: Math.min(topBox.right - topBox.left, w > 760 ? w * 0.8 : Infinity), h: Math.max(80, area.y1 - area.y0 - capH - gap) };
@@ -760,6 +785,7 @@ function fit() {
   const y0 = area.y0 + Math.max(0, (free - lift) / 2) + lift;
   camera.setViewOffset(w, h, (r.x0 + r.x1) / 2 - (topBox.left + topBox.right) / 2, (r.y0 + r.y1) / 2 - (y0 + artH / 2), w, h);
   camera.updateProjectionMatrix();
+  camDist = hi;
   caption.style.top = `${Math.round(y0 + artH + gap)}px`;
   backdrop.material.uniforms.uRes.value.set(w, h);
   caption.classList.add('placed');
@@ -768,6 +794,42 @@ function fit() {
   if (centre) capCentre.copy(centre);
   buildEdges();
   placeFloorText();
+  if (finale.k) { placeCamera(); buildEdges(); }
+}
+
+// The finale on a portrait phone: there the sign's words come out a few pixels tall, so once it
+// lands the camera glides in until the sign is about a third of the screen wide, and glides back
+// out when the blocks stand up. Elsewhere the whole 404 already reads. The hint on the floor
+// hides while the camera is in, and the screen edges that keep marbles in view follow it.
+const finale = { k: 0, from: 0, to: 0, t0: 0, focus: new THREE.Vector3(), zoom: 1 };
+let camDist = 1;
+const camTarget = new THREE.Vector3();
+function finaleTo(on, delay = 0) {
+  if (!NARROW || (on ? 1 : 0) === finale.to) return;
+  finale.from = finale.k;
+  finale.to = on ? 1 : 0;
+  finale.t0 = performance.now() + delay;
+  if (!on) return;
+  finale.focus.copy(lyingPos(home)).setY(0);
+  const [ax] = toScreen(tmp.set(finale.focus.x - HOME.w / 2, 0, finale.focus.z));
+  const [bx] = toScreen(tmp.set(finale.focus.x + HOME.w / 2, 0, finale.focus.z));
+  finale.zoom = THREE.MathUtils.clamp(view.w * 0.36 / Math.abs(bx - ax), 1, 3);
+}
+function placeCamera() {
+  const k = finale.k, e = k * k * k * (k * (k * 6 - 15) + 10);   // smootherstep
+  camTarget.copy(lookAt).lerp(finale.focus, e);
+  camera.position.copy(camTarget).addScaledVector(viewDir, camDist / (1 + (finale.zoom - 1) * e));
+  camera.lookAt(camTarget);
+  camera.updateMatrixWorld();
+}
+function stepFinale(now) {
+  if (finale.k === finale.to || now < finale.t0) return;
+  const p = Math.min(1, (now - finale.t0) / (reduceMotion.matches ? 1 : 1600));
+  finale.k = finale.from + (finale.to - finale.from) * p;
+  placeCamera();
+  if (p < 1) return;
+  buildEdges();
+  if (finale.to === 0) placeFloorText();   // laid out against the full view, not a zoomed one
 }
 
 function toScreen(v) {
@@ -1002,6 +1064,7 @@ function settle() {
 
 function standUp({ intro = false } = {}) {
   for (const m of [...marbles]) removeMarble(m);
+  finaleTo(false);
   // the copy goes back at once, not when the last block is up
   state.arrived = false;
   $('home').classList.remove('arrived');
@@ -1300,6 +1363,7 @@ function arrive() {
   if (state.arrived) return;
   state.arrived = true;
   arrivedAt = performance.now();
+  finaleTo(true, 450);   // once the sign has landed
   $('home').classList.add('arrived');
   $('sub').textContent = 'Every block went over. The way back is open.';
   $('live').textContent = 'The run reached home. The way back is open.';
@@ -1344,16 +1408,17 @@ function placeFloorText() {
   const perUnit = Math.abs(bx - ax);
   const W = el.offsetWidth, H = el.offsetHeight;
   // aimed at the width a 15–16 px line would have, which the floor's slant brings to ~12 px tall;
-  // on a phone a little smaller, so the hint stays quieter than the 404
-  const TEXT_PX = view.w < 640 ? 13.5 : 16;
-  let ww = Math.min(W * (TEXT_PX / 40), view.w * (view.w < 640 ? 0.72 : 0.9)) / perUnit;
+  // on a phone a little smaller, so the hint stays quieter than the 404; on a big screen a little
+  // bigger, so it keeps pace with the type; never wider than most of the 404 under it
+  const TEXT_PX = view.w < 640 ? 13.5 : Math.min(19, 16 * Math.max(1, view.w / 1440));
+  let ww = Math.min(W * (TEXT_PX / 40), view.w * (view.w < 640 ? 0.72 : 0.9), (art.x1 - art.x0) * 0.8) / perUnit;
   const fits = (region.y1 - region.y0) * 0.8 / (H / W * perUnit * Math.sin(ELEV));
   ww = Math.min(ww, fits);
   const hh = ww * H / W;
   // Above the 404 it sits close over the art (a short step up from it, not adrift in the middle
   // of the empty band); below the caption it sits a short step under it.
   const tall = hh * perUnit * Math.sin(ELEV);
-  const gap = Math.min(36, (region.y1 - region.y0 - tall) / 2);
+  const gap = Math.min(view.w < 640 ? 48 : 36, (region.y1 - region.y0 - tall) / 2);
   const cy = region === above ? region.y1 - gap - tall / 2 : region.y0 + gap + tall / 2;
   mid = floorAt(view.w / 2, cy) || mid;
   const q = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sz]) => toScreen(tmp.set(mid.x + sx * ww / 2, 0, mid.z + sz * hh / 2)));
@@ -1385,7 +1450,7 @@ function showFloorText() {
     // one line on wider screens; on a phone a line per hint
     if (parts.length) layFloorText(parts, view.w < 640 && parts.length > 1);
   }
-  $('floorText').classList.toggle('on', floorTextOn && parts.length > 0 && state.mode === 'play');
+  $('floorText').classList.toggle('on', floorTextOn && parts.length > 0 && state.mode === 'play' && finale.k === 0);
 }
 
 function run() {
@@ -1407,8 +1472,8 @@ $('sound').addEventListener('click', () => {
   soundOn = !soundOn;
   ensureAudio();
   if (master) master.gain.value = soundOn ? 0.7 : 0;
-  $('sound').textContent = soundOn ? 'Sound on' : 'Sound off';
-  $('sound').setAttribute('aria-pressed', String(soundOn));
+  // the label says what a press will do: "Sound on" read as either a state or an action
+  $('sound').textContent = soundOn ? 'Mute' : 'Unmute';
 });
 addEventListener('keydown', (e) => {
   if (e.target.closest?.('button, a, input')) return;
@@ -1588,6 +1653,7 @@ function frame(now) {
     runPending(now);
   }
   updateLeans(now, dt);
+  stepFinale(now);
   showFloorText();
   if (!reduceMotion.matches) {
     const u = backdrop.material.uniforms;
@@ -1618,7 +1684,7 @@ startPhysics().catch((err) => {
 // For the QA scripts.
 window.Domino = {
   pieces, START, HOME_ID,
-  state: () => ({ mode: state.mode, down: state.down, total: dominoes.length, arrived: state.arrived, marbles: marbles.filter((m) => !m.dying).length, physics: !!world, pixelRatio: renderer.getPixelRatio() }),
+  state: () => ({ mode: state.mode, down: state.down, total: dominoes.length, arrived: state.arrived, marbles: marbles.filter((m) => !m.dying).length, physics: !!world, pixelRatio: renderer.getPixelRatio(), finale: +finale.k.toFixed(2) }),
   marble: () => { const m = marbles.filter((q) => !q.dying).at(-1); if (!m) return null; const v = m.body.linvel(); return { x: +m.mesh.position.x.toFixed(2), y: +m.mesh.position.y.toFixed(2), z: +m.mesh.position.z.toFixed(2), speed: +Math.hypot(v.x, v.z).toFixed(2), held: m.held }; },
   edges: () => edges ? edges.numColliders() : 0,
   sounds: () => soundLog.slice(),
