@@ -372,7 +372,7 @@ const backdrop = new THREE.Mesh(
       // a CSS-style radial glow: strength a at the centre, gone at radius r (in screen-ellipse units)
       float glow(vec2 c, float r, float a) { return a * (1.0 - smoothstep(0.0, r, length(vUv - c))); }
       void main() {
-        float t = uTime;
+        float t = uTime * 1.9;   // fast enough to notice within a couple of seconds, still calm
         // each corner glow wanders on its own slow loop (20–40 s, so the page is never still but
         // nothing pulls the eye) and breathes in size and strength; all of them lean a little
         // away from the pointer for depth, and swell for a moment when the run reaches home
@@ -380,12 +380,12 @@ const backdrop = new THREE.Mesh(
         float swell = 1.0 + 0.3 * uPulse;
         // blobs: each wanders a wide lava-lamp loop (two sines per axis, so the path never repeats
         // a simple circle) and swells and shrinks as it goes
-        vec2 pinkC = vec2(0.92, 0.9) + vec2(0.2 * sin(t * 0.31) + 0.07 * sin(t * 0.73 + 1.0), 0.18 * sin(t * 0.27 + 1.1) + 0.06 * cos(t * 0.61)) + lean;
-        vec2 sageC = vec2(0.08, 0.12) + vec2(0.18 * sin(t * 0.29 + 2.3) + 0.06 * cos(t * 0.67), 0.2 * sin(t * 0.35 + 0.4) + 0.06 * sin(t * 0.79 + 2.0)) + lean;
-        vec2 blueC = vec2(0.55, 0.02) + vec2(0.3 * sin(t * 0.23 + 2.1) + 0.06 * sin(t * 0.71), 0.1 * sin(t * 0.33 + 3.0)) + lean;
-        float pink = glow(pinkC, 0.66 * (1.0 + 0.2 * sin(t * 0.43)), 0.55 * swell * (0.88 + 0.12 * sin(t * 0.47 + 0.7)));
-        float sage = glow(sageC, 0.62 * (1.0 + 0.2 * sin(t * 0.39 + 2.0)), 0.5 * swell * (0.88 + 0.12 * sin(t * 0.51 + 1.9)));
-        float bluePeak = 0.46 * swell * (0.9 + 0.1 * sin(t * 0.37 + 3.1));
+        vec2 pinkC = vec2(0.88, 0.86) + vec2(0.27 * sin(t * 0.31) + 0.08 * sin(t * 0.73 + 1.0), 0.24 * sin(t * 0.27 + 1.1) + 0.07 * cos(t * 0.61)) + lean;
+        vec2 sageC = vec2(0.12, 0.14) + vec2(0.25 * sin(t * 0.29 + 2.3) + 0.07 * cos(t * 0.67), 0.26 * sin(t * 0.35 + 0.4) + 0.07 * sin(t * 0.79 + 2.0)) + lean;
+        vec2 blueC = vec2(0.5, 0.04) + vec2(0.36 * sin(t * 0.23 + 2.1) + 0.07 * sin(t * 0.71), 0.14 * sin(t * 0.33 + 3.0)) + lean;
+        float pink = glow(pinkC, 0.66 * (1.0 + 0.24 * sin(t * 0.43)), 0.62 * swell * (0.88 + 0.12 * sin(t * 0.47 + 0.7)));
+        float sage = glow(sageC, 0.62 * (1.0 + 0.24 * sin(t * 0.39 + 2.0)), 0.58 * swell * (0.88 + 0.12 * sin(t * 0.51 + 1.9)));
+        float bluePeak = 0.52 * swell * (0.9 + 0.1 * sin(t * 0.37 + 3.1));
         float blue = glow(blueC, 0.46 * (1.0 + 0.2 * sin(t * 0.41 + 4.0)), bluePeak);
         vec3 col = uBase;
         col = mix(col, uPink, clamp(pink, 0.0, 1.0));

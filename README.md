@@ -29,12 +29,14 @@ python3 tools/serve.py 3015 .
 
 ## Layout
 
-Minimal, after Mobbin's quieter 404s (Lassie, Sana, Paraform, Cloudstudio, Analogue Agency for
-the centred stack).
+Minimal, after Mobbin's quieter 404s (illoca for the type; Lassie, Sana, Paraform, Cloudstudio
+and Analogue Agency for the centred stack).
 - **The dominoes are the hero.** One caption sits centred under them: "This page toppled over."
-  (Bricolage Grotesque 600, 24–36 px), "Give the first block a push and watch your way home
-  unfold.", and a single dark "Back to home" pill. The hint, the 404 and the caption are centred
-  as one stack.
+  set like illoca's 404: a large, regular-weight grotesque in soft ink (Hanken Grotesk, a free
+  near-match for illoca's Graphik; 30–56 px), then "Give the first block a push and watch your
+  way home unfold." and a single dark "Back to home" pill. The sign's "HOME" uses the same face.
+  The hint, the 404 and the caption are centred as one stack, with clear air under the 404 so
+  blocks and marbles knocked loose never crowd the headline. "Mute" sits in the corner.
 - **Hints are painted on the floor** just above the 404, in muted taupe JetBrains Mono: "Click a
   block or press Space · drag the floor to roll a marble" (on a phone: "Tap a block" over "swipe
   to roll a marble"). The line is an HTML element mapped onto the floor plane with a homography,
@@ -45,13 +47,15 @@ the centred stack).
 - **A hovered block** rises a little, tilts the way a click would tip it, and gets a soft
   shadow under it.
 - **Background:** warm ivory with soft colour in the corners (pink top right, sage bottom left,
-  periwinkle along the bottom), after mymind and Oevra. Each glow wanders and breathes on its own
-  20–40 second loop, leans away from the pointer, and swells when the run reaches home. Where the
+  periwinkle along the bottom), after mymind and Oevra. The glows move like a lava lamp: each
+  wanders a wide loop of its own (about 10–20 s) and swells and shrinks as it goes, leans away
+  from the pointer, and swells when the run reaches home. Where the
   periwinkle fades into the ivory it passes through a faint blush; mixed straight, that band came
   out a flat grey under the buttons. All motion stops under reduced motion.
-- **On a portrait phone** the digits are condensed (same height, about three quarters of the
-  width), since the screen is short of width, not height, so each block comes out bigger. The
-  scene renders at the phone's full 3x.
+- **On a portrait phone** the 404 is built from about 110 blocks instead of 185 (smaller digits
+  in block units), so each block reads as a domino at phone size, and the camera looks down more
+  steeply. Once the sign lands, the camera glides in until "TAKE ME HOME" is readable, and back
+  out when the blocks stand up. The scene renders at the phone's full 3x.
 
 ## How it works
 
