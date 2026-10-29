@@ -46,12 +46,12 @@ and Analogue Agency for the centred stack).
 - **The first block rocks** forward a few degrees every few seconds until something falls.
 - **A hovered block** rises a little, tilts the way a click would tip it, and gets a soft
   shadow under it.
-- **Background:** warm ivory with soft colour in the corners (pink top right, sage bottom left,
-  periwinkle along the bottom), after mymind and Oevra. The glows move like a lava lamp: each
-  wanders a wide loop of its own (about 10–20 s) and swells and shrinks as it goes, leans away
-  from the pointer, and swells when the run reaches home. Where the
-  periwinkle fades into the ivory it passes through a faint blush; mixed straight, that band came
-  out a flat grey under the buttons. All motion stops under reduced motion.
+- **Background:** a static, soft pastel gradient in CSS: warm ivory (#F4EBDD) with layered
+  radial gradients, blush pink (#EBC9C6) from the top right, muted sage (#C9DCC4) from the bottom
+  left and dusty lavender (#CFD0E7) along the bottom. Each fades over six stops so there is no
+  visible edge, and none reaches the middle, which stays ivory behind the dominoes and text. The
+  3D canvas is transparent over it; the glass marbles see a matching copy inside the scene, so
+  they refract the same colours.
 - **On a portrait phone** the 404 is built from about 110 blocks instead of 185 (smaller digits
   in block units), so each block reads as a domino at phone size, and the camera looks down more
   steeply. Once the sign lands, the camera glides in until "TAKE ME HOME" is readable, and back
