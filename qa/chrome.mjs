@@ -89,6 +89,10 @@ export async function launch({ width = 1362, height = 1044 } = {}) {
     errors,
     outside,
     send,
+    /** Calls `fn` every time the browser reports `method` (until the page closes). */
+    on(method, fn) {
+      handlers.add((msg) => { if (msg.sessionId === sessionId && msg.method === method) fn(msg.params); });
+    },
     /** Resolves the next time the browser reports `method`. */
     once(method) {
       return new Promise((resolve) => {

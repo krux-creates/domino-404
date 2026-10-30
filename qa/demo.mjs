@@ -1,18 +1,26 @@
-// A launch clip for the posts: the page at rest, a click on the first block, the whole run, and the
-// sign landing. Each frame is the 3D canvas with the caption drawn over it (the caption is HTML, so a
-// canvas-only recording would miss it), recorded with MediaRecorder.
-//   node qa/demo.mjs && swift qa/mux.swift   → media/demo.mp4 and media/demo-720.mp4
+// The launch clip: the page at rest, a cursor gliding in to the first block, the push, the whole
+// run with its clacks, the sign landing with its thud, and the cursor moving to Back to home.
+//
+// The picture comes from Chrome's own screencast of the real page (WebGL, text and all), and the
+// cursor is a real element on the page that follows the mouse, because headless Chrome draws
+// none. The sound is the page's own audio, copied off to a recorder. qa/frames.swift turns the
+// frames into a video and qa/mux.swift lays the sound on it, lined up on the thud.
+//   node qa/demo.mjs && swift qa/frames.swift && swift qa/mux.swift   → media/demo.mp4, media/demo-720.mp4
 import { launch, sleep } from './chrome.mjs';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const W = 1280, H = 720, DPR = 1.5;
+const media = fileURLToPath(new URL('../media/', import.meta.url));
+const framesDir = media + 'frames/';
+rmSync(framesDir, { recursive: true, force: true });
+mkdirSync(framesDir, { recursive: true });
+
 const page = await launch({ width: W, height: H });
 await page.size(W, H, { dpr: DPR });
-// Sound: the page makes its audio context only on the first click, after recording has started,
-// so hand it one made now, and copy everything it sends to the speakers into a stream the
-// recorder can take.
-await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `(() => {
+// Sound: the page makes its audio context only on the first click, so hand it one made at load,
+// and copy everything it sends to the speakers into a stream a recorder can take.
+await page.beforeLoad(`(() => {
   const AC = window.AudioContext; let ctx;
   window.__audioCtx = () => ctx || (ctx = new AC());
   window.AudioContext = function () { return window.__audioCtx(); };
@@ -23,113 +31,80 @@ await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `(() => {
     if (dest instanceof AudioDestinationNode) { const c = this.context; c.__tap = c.__tap || c.createMediaStreamDestination(); connect.call(this, c.__tap); }
     return out;
   };
-})();` });
+})();`);
 await page.goto('/', { settle: 400 });
 await page.until(() => window.Domino?.state().mode === 'play', { timeout: 30000, what: 'play' });
 await page.run(() => document.fonts.ready);
-await sleep(1500);
 
-await page.run((DPR) => {
-  const gl = document.getElementById('scene');
-  const out = document.createElement('canvas');
-  out.width = gl.width; out.height = gl.height;
-  // a detached canvas sends no frames to the recorder, so it sits on the page, out of the way
-  Object.assign(out.style, { position: 'fixed', left: '0', top: '0', width: '2px', height: '2px', opacity: '0.02', pointerEvents: 'none', zIndex: '2147483647' });
-  document.body.append(out);
-  const g = out.getContext('2d');
-  const k = gl.width / innerWidth;
-  const css = (el) => getComputedStyle(el);
-  const text = (el) => {
-    const r = el.getBoundingClientRect(), s = css(el);
-    g.font = `${s.fontWeight} ${parseFloat(s.fontSize) * k}px ${s.fontFamily}`;
-    g.fillStyle = s.color; g.textAlign = 'center'; g.textBaseline = 'middle';
-    if ('letterSpacing' in g) g.letterSpacing = s.letterSpacing === 'normal' ? '0px' : `${parseFloat(s.letterSpacing) * k}px`;
-    const lines = el.innerText.split('\n');
-    lines.forEach((t, i) => g.fillText(t, (r.left + r.width / 2) * k, (r.top + r.height * (i + 0.5) / lines.length) * k));
-  };
-  const pill = (el) => {
-    if (el.hidden) return;
-    const r = el.getBoundingClientRect(), s = css(el);
-    const op = el.getAnimations().length ? 0.0 + Math.min(1, el.getAnimations()[0].currentTime / 420) : 1;
-    g.globalAlpha = op;
-    g.beginPath(); g.roundRect(r.left * k, r.top * k, r.width * k, r.height * k, r.height * k / 2);
-    if (s.backgroundColor !== 'rgba(0, 0, 0, 0)') { g.fillStyle = s.backgroundColor; g.fill(); }
-    g.strokeStyle = s.borderTopColor; g.lineWidth = k; g.stroke();
-    text(el); g.globalAlpha = 1;
-  };
-  // the page's CSS background, painted the same way: ivory, then each radial layer (CSS lists the
-  // top layer first, so paint them in reverse)
-  const layers = [
-    [0.5, 1, 0.66, 0.56, '207, 208, 231', [[0, .57], [.2, .42], [.42, .24], [.64, .09], [.84, .02], [1, 0]]],
-    [0, 1, 0.78, 0.78, '201, 220, 196', [[0, .55], [.2, .4], [.42, .23], [.64, .09], [.84, .02], [1, 0]]],
-    [1, 0, 0.85, 0.8, '235, 201, 198', [[0, .8], [.18, .62], [.38, .38], [.58, .17], [.78, .05], [1, 0]]],
-  ];
-  const background = () => {
-    g.fillStyle = '#F4EBDD'; g.fillRect(0, 0, out.width, out.height);
-    for (const [cx, cy, rx, ry, rgb, stops] of layers) {
-      g.save(); g.translate(cx * out.width, cy * out.height); g.scale(rx * out.width, ry * out.height);
-      const gr = g.createRadialGradient(0, 0, 0, 0, 0, 1);
-      for (const [o, a] of stops) gr.addColorStop(o, `rgba(${rgb}, ${a})`);
-      g.fillStyle = gr; g.fillRect(-2, -2, 4, 4); g.restore();
-    }
-  };
-  window.__draws = 0;
-  const draw = () => { try { drawFrame(); window.__draws++; } catch (e) { window.__err = String(e.stack || e); } requestAnimationFrame(draw); };
-  const drawFrame = () => {
-    background();
-    g.drawImage(gl, 0, 0);
-    const ft = document.getElementById('floorText');
-    if (ft.classList.contains('on') && +css(ft).opacity > 0.01) {
-      // the floor hint, flat at its place on screen
-      const r = ft.getBoundingClientRect(), rows = [...ft.children];
-      g.globalAlpha = +css(ft).opacity;
-      rows.forEach((d, i) => { const s = css(ft); g.font = `500 ${(r.height / rows.length) * 0.78 * k}px ${s.fontFamily}`; g.fillStyle = s.color; g.textAlign = 'center'; g.textBaseline = 'middle'; g.letterSpacing = `${(r.height / rows.length) * 0.08 * k}px`; g.fillText(d.innerText.toUpperCase(), (r.left + r.width / 2) * k, (r.top + r.height * (i + 0.5) / rows.length) * k); });
-      g.globalAlpha = 1;
-    }
-    text(document.querySelector('h1'));
-    text(document.getElementById('sub'));
-    pill(document.getElementById('home'));
-    pill(document.getElementById('reset'));
-    text(document.getElementById('sound'));
-  };
-  requestAnimationFrame(draw);
+// the cursor: a standard arrow, a pointing hand over a block or a button, a ring on each click
+await page.run(() => {
+  const el = document.createElement('div');
+  el.innerHTML = `<svg width="22" height="26" viewBox="-1 -1 15 21" class="arrow"><path d="M0 0 L0 17 L4.2 13.1 L7 19.6 L10 18.3 L7.3 11.9 L12.6 11.9 Z" fill="#fff" stroke="#111" stroke-width="1.3" stroke-linejoin="round"/></svg><svg width="26" height="28" viewBox="0 0 20 22" class="hand"><path d="M6 0.8c1 0 1.8 .8 1.8 1.8v6.2c.3-.6 .9-1 1.6-1 1 0 1.8 .8 1.8 1.8v.4c.3-.5 .9-.9 1.6-.9 1 0 1.8 .8 1.8 1.8v.6c.3-.4 .8-.7 1.4-.7 1 0 1.8 .8 1.8 1.8v4.6c0 3.6-2.6 6.4-6.2 6.4H9.9c-1.9 0-3.4-.9-4.4-2.4L1.3 14.6c-.6-.9-.3-2 .6-2.5.8-.5 1.8-.3 2.3.4L4.2 13V2.6C4.2 1.6 5 .8 6 .8z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
+  Object.assign(el.style, { position: 'fixed', left: '-60px', top: '-60px', zIndex: 2147483647, pointerEvents: 'none', filter: 'drop-shadow(0 1px 1.5px rgba(0,0,0,.3))', transition: 'transform .08s', transformOrigin: '0 0' });
+  const style = document.createElement('style');
+  style.textContent = `.qa-cur svg { position: absolute; left: 0; top: 0; } .qa-cur .hand { display: none; left: -7px; top: -1px; } .qa-cur.pointer .hand { display: block; } .qa-cur.pointer .arrow { display: none; }
+    .qa-ring { position: fixed; z-index: 2147483646; pointer-events: none; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; border: 2px solid rgba(31, 27, 22, .45); animation: qa-ring .5s ease-out forwards; }
+    @keyframes qa-ring { to { transform: scale(5); opacity: 0; } }`;
+  document.head.append(style);
+  el.className = 'qa-cur';
+  document.body.append(el);
+  addEventListener('pointermove', (e) => {
+    el.style.left = e.clientX + 'px'; el.style.top = e.clientY + 'px';
+    const over = document.elementFromPoint(e.clientX, e.clientY);
+    el.classList.toggle('pointer', document.getElementById('scene').style.cursor === 'pointer' || !!over?.closest?.('a, button'));
+  }, true);
+  addEventListener('pointerdown', (e) => {
+    el.style.transform = 'scale(.9)'; setTimeout(() => { el.style.transform = ''; }, 120);
+    const r = document.createElement('div'); r.className = 'qa-ring'; r.style.left = e.clientX + 'px'; r.style.top = e.clientY + 'px';
+    document.body.append(r); setTimeout(() => r.remove(), 600);
+  }, true);
+});
+
+// start the sound recorder and the screencast together
+const frames = [];
+let pending = Promise.resolve();
+page.on('Page.screencastFrame', (f) => {
+  frames.push({ file: `f${String(frames.length).padStart(5, '0')}.jpg`, t: f.metadata.timestamp });
+  writeFileSync(framesDir + frames.at(-1).file, Buffer.from(f.data, 'base64'));
+  pending = pending.then(() => page.send('Page.screencastFrameAck', { sessionId: f.sessionId })).catch(() => {});
+});
+await page.run(() => {
   const ctx = window.__audioCtx();
   ctx.__tap = ctx.__tap || ctx.createMediaStreamDestination();
-  // picture and sound go to two recorders started together (one recorder doing both kept writing
-  // video that would not open); qa/mux.swift joins them afterwards
-  const recs = window.__recs = {
-    video: new MediaRecorder(out.captureStream(60), { mimeType: 'video/mp4;codecs=avc1.640028', videoBitsPerSecond: 8e6 }),
-    audio: new MediaRecorder(ctx.__tap.stream, { mimeType: 'audio/mp4;codecs=mp4a.40.2', audioBitsPerSecond: 192000 }),
-  };
-  window.__chunks = { video: [], audio: [] };
-  for (const [k, r] of Object.entries(recs)) { r.ondataavailable = (e) => window.__chunks[k].push(e.data); }
-  for (const r of Object.values(recs)) r.start(250);
-  window.__recStart = performance.now();
-}, DPR);
+  const rec = window.__rec = new MediaRecorder(ctx.__tap.stream, { mimeType: 'audio/mp4;codecs=mp4a.40.2', audioBitsPerSecond: 192000 });
+  window.__chunks = []; rec.ondataavailable = (e) => window.__chunks.push(e.data); rec.start(250);
+});
+await page.send('Page.startScreencast', { format: 'jpeg', quality: 92, maxWidth: W * DPR, maxHeight: H * DPR, everyNthFrame: 1 });
 
-await sleep(2200);                                            // rest: blobs drift, the first block rocks
+const glide = async (a, b, ms) => { const n = Math.round(ms / 16); for (let i = 1; i <= n; i++) { const e = 1 - (1 - i / n) ** 3; await page.move(a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e); await sleep(16); } };
+await sleep(1600);                                            // rest: the first block rocks
 const start = await page.run(() => Domino.screen(Domino.START));
-await page.move(start[0] + 120, start[1] - 60);
-await page.move(start[0], start[1], { from: [start[0] + 120, start[1] - 60], steps: 30, ms: 16 });
-await sleep(450);                                             // hover lift
+const from = [W * 0.32, H * 0.86];
+await page.move(...from);
+await glide(from, start, 1300);                               // the cursor eases onto the first block
+await sleep(600);                                             // hover: it lifts
 await page.click(start.map(Math.round));                     // push
-await page.until(() => Domino.state().arrived, { timeout: 30000, what: 'arrived' });
-await sleep(2600);                                            // the sign lands face up
-await page.run(() => Promise.all(Object.entries(window.__recs).map(([k, r]) => new Promise((res) => { r.onstop = () => { window['__blob_' + k] = new Blob(window.__chunks[k]); res(); }; r.stop(); }))));
-const dir = fileURLToPath(new URL('../media/', import.meta.url));
-mkdirSync(dir, { recursive: true });
-for (const [k, file] of [['video', 'demo-video.mp4'], ['audio', 'demo-audio.m4a']]) {
-  const n = await page.run((k) => window['__blob_' + k].size, k);
-  const parts = [];
-  for (let o = 0; o < n; o += 3e6) {
-    parts.push(Buffer.from(await page.run(async (k, o) => { const buf = new Uint8Array(await window['__blob_' + k].slice(o, o + 3e6).arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000)); return btoa(s); }, k, o), 'base64'));
-  }
-  writeFileSync(dir + file, Buffer.concat(parts));
-  console.log('wrote media/' + file, (n / 1e6).toFixed(1), 'MB');
+const end = [start[0] + 60, start[1] + 140];
+await glide(start, end, 700);                                 // out of the way while it runs
+await page.until(() => Domino.state().arrived, { timeout: 40000, what: 'arrived' });
+await sleep(900);                                             // the sign lands face up
+const home = await page.run(() => { const r = document.getElementById('home').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+await glide(end, home, 1100);                                 // and the cursor goes to the way home
+await sleep(1600);
+
+await page.send('Page.stopScreencast');
+await pending;
+// the thud's moment in wall-clock seconds, the same clock as the screencast's frame times
+const thudWall = await page.run(() => Date.now() / 1000 - (performance.now() - Domino.thudAt()) / 1000);
+const audioBytes = await page.run(() => new Promise((res) => { window.__rec.onstop = () => { window.__blob = new Blob(window.__chunks); res(window.__blob.size); }; window.__rec.stop(); }));
+const parts = [];
+for (let o = 0; o < audioBytes; o += 3e6) {
+  parts.push(Buffer.from(await page.run(async (o) => { const buf = new Uint8Array(await window.__blob.slice(o, o + 3e6).arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000)); return btoa(s); }, o), 'base64'));
 }
-// where the thud falls in the picture, for qa/mux.swift to line the sound up on
-const thud = await page.run(() => (Domino.thudAt() - window.__recStart) / 1000);
-writeFileSync(dir + 'demo-sync.json', JSON.stringify({ thud }));
-console.log('thud at', thud.toFixed(2), 's into the picture');
-console.log(page.errors.length ? page.errors : 'no errors');
+writeFileSync(media + 'demo-audio.m4a', Buffer.concat(parts));
+const t0 = frames[0].t;
+writeFileSync(framesDir + 'frames.json', JSON.stringify(frames.map((f) => ({ file: f.file, t: f.t - t0 }))));
+writeFileSync(media + 'demo-sync.json', JSON.stringify({ thud: thudWall - t0 }));
+const dur = frames.at(-1).t - t0;
+console.log(`${frames.length} frames over ${dur.toFixed(1)} s (${(frames.length / dur).toFixed(0)} fps), thud at ${(thudWall - t0).toFixed(2)} s, sound ${(audioBytes / 1e6).toFixed(1)} MB`, page.errors.length ? page.errors : 'no errors');
 await page.close();
