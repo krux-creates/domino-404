@@ -4,3 +4,7 @@
 qa/out/
 .env*
 dist/
+media/demo*.mp4
+launch-posts.md
+media/demo-audio.m4a
+media/demo-sync.json

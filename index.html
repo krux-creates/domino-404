@@ -893,6 +893,7 @@ function hiss(t, freq, q, peak, decay, out, sweepTo) {
 }
 // Marble sounds. k is how hard, 0..1.
 const soundLog = [];
+let thudAt = 0;   // for the launch-clip recorder, which lines its sound up on this
 function sfx(kind, k, at) {
   soundLog.push(kind);
   if (soundLog.length > 80) soundLog.shift();
@@ -921,12 +922,56 @@ function setRoll(speed) {
   rollGain.gain.setTargetAtTime(soundOn ? s * 0.16 : 0, t, 0.06);
   rollFilter.frequency.setTargetAtTime(220 + s * 520, t, 0.06);
 }
+// The sign landing: a heavy board slapping the floor. A low body that drops in pitch, a dull
+// thump of filtered noise, and the wooden knock on top.
+function thud(p) {
+  if (!audio || !soundOn) return;
+  soundLog.push('thud');
+  thudAt = performance.now();
+  const t = audio.currentTime;
+  const pan = audio.createStereoPanner();
+  pan.pan.value = THREE.MathUtils.clamp((toScreen(p.pos)[0] / view.w) * 2 - 1, -1, 1) * 0.5;
+  pan.connect(master);
+  const body = audio.createOscillator();
+  body.type = 'sine';
+  body.frequency.setValueAtTime(110, t);
+  body.frequency.exponentialRampToValueAtTime(48, t + 0.35);
+  const bg = audio.createGain();
+  bg.gain.setValueAtTime(0.0001, t);
+  bg.gain.exponentialRampToValueAtTime(0.95, t + 0.006);
+  bg.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+  body.connect(bg).connect(pan);
+  body.start(t); body.stop(t + 0.6);
+  const src = audio.createBufferSource();
+  src.buffer = noise;
+  const lp = audio.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(900, t);
+  lp.frequency.exponentialRampToValueAtTime(180, t + 0.25);
+  const ng = audio.createGain();
+  ng.gain.setValueAtTime(0.0001, t);
+  ng.gain.exponentialRampToValueAtTime(0.8, t + 0.003);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+  src.connect(lp).connect(ng).connect(pan);
+  src.start(t);
+  const knock = audio.createOscillator();
+  knock.type = 'triangle';
+  knock.frequency.setValueAtTime(260, t);
+  knock.frequency.exponentialRampToValueAtTime(150, t + 0.08);
+  const kg = audio.createGain();
+  kg.gain.setValueAtTime(0.0001, t);
+  kg.gain.exponentialRampToValueAtTime(0.35, t + 0.003);
+  kg.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+  knock.connect(kg).connect(pan);
+  knock.start(t); knock.stop(t + 0.2);
+}
+
 function clack(p, loud = 1) {
   if (!audio || !soundOn) return;
-  const now = performance.now();
-  if (now - lastClack < 14) return;
+  const now = performance.now(), big = p.kind === 'home';
+  if (now - lastClack < 14 && !big) return;
   lastClack = now;
-  const t = audio.currentTime, big = p.kind === 'home';
+  const t = audio.currentTime;
   const pan = audio.createStereoPanner();
   pan.pan.value = THREE.MathUtils.clamp((toScreen(p.pos)[0] / view.w) * 2 - 1, -1, 1) * 0.7;
   pan.connect(master);
@@ -938,7 +983,7 @@ function clack(p, loud = 1) {
   bp.Q.value = big ? 1.2 : 2.6;
   const ng = audio.createGain();
   ng.gain.setValueAtTime(0.0001, t);
-  ng.gain.exponentialRampToValueAtTime((big ? 0.9 : 0.45) * loud, t + 0.002);
+  ng.gain.exponentialRampToValueAtTime((big ? 0.9 : 0.3) * loud, t + 0.002);   // the clacks sit soft under the run
   ng.gain.exponentialRampToValueAtTime(0.0001, t + (big ? 0.18 : 0.06));
   src.connect(bp).connect(ng).connect(pan);
   src.start(t);
@@ -949,7 +994,7 @@ function clack(p, loud = 1) {
   osc.frequency.exponentialRampToValueAtTime(f0 * 0.6, t + 0.05);
   const og = audio.createGain();
   og.gain.setValueAtTime(0.0001, t);
-  og.gain.exponentialRampToValueAtTime((big ? 0.5 : 0.18) * loud, t + 0.003);
+  og.gain.exponentialRampToValueAtTime((big ? 0.5 : 0.12) * loud, t + 0.003);
   og.gain.exponentialRampToValueAtTime(0.0001, t + (big ? 0.25 : 0.07));
   osc.connect(og).connect(pan);
   osc.start(t);
@@ -1026,7 +1071,7 @@ function settle() {
   // Put every body on its resting pose, asleep, and hand the scene to physics.
   for (const p of pieces) {
     p.pos.copy(p.restPos); p.quat.copy(p.restQuat); p.up.set(0, 1, 0);
-    p.tilt = 0; p.fired = false; p.down = false; p.dir = 0; p.slept = false;
+    p.tilt = 0; p.fired = false; p.down = false; p.dir = 0; p.slept = false; p.landed = false;
     draw(p);
     if (p.body) {
       p.body.setTranslation(p.restPos, false);
@@ -1213,6 +1258,8 @@ function readPhysics(now) {
       p.down = true;
       if (p.kind === 'home') arrive(); else state.down++;
     }
+    // the sign hitting the floor face up: the run's last, biggest sound
+    if (p.kind === 'home' && !p.landed && p.tilt > 1.4) { p.landed = true; thud(p); }
     draw(p);
   }
   dominoMesh.instanceMatrix.needsUpdate = true;
@@ -1659,7 +1706,7 @@ startPhysics().catch((err) => {
 
 // For the QA scripts.
 window.Domino = {
-  pieces, START, HOME_ID,
+  pieces, START, HOME_ID, thudAt: () => thudAt,
   state: () => ({ mode: state.mode, down: state.down, total: dominoes.length, arrived: state.arrived, marbles: marbles.filter((m) => !m.dying).length, physics: !!world, pixelRatio: renderer.getPixelRatio(), finale: +finale.k.toFixed(2) }),
   marble: () => { const m = marbles.filter((q) => !q.dying).at(-1); if (!m) return null; const v = m.body.linvel(); return { x: +m.mesh.position.x.toFixed(2), y: +m.mesh.position.y.toFixed(2), z: +m.mesh.position.z.toFixed(2), speed: +Math.hypot(v.x, v.z).toFixed(2), held: m.held }; },
   edges: () => edges ? edges.numColliders() : 0,
