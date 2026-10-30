@@ -6,6 +6,7 @@
 // none. The sound is the page's own audio, copied off to a recorder. qa/frames.swift turns the
 // frames into a video and qa/mux.swift lays the sound on it, lined up on the thud.
 //   node qa/demo.mjs && swift qa/frames.swift && swift qa/mux.swift   → media/demo.mp4, media/demo-720.mp4
+//   CURSOR=1 adds a drawn cursor
 import { launch, sleep } from './chrome.mjs';
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -36,8 +37,9 @@ await page.goto('/', { settle: 400 });
 await page.until(() => window.Domino?.state().mode === 'play', { timeout: 30000, what: 'play' });
 await page.run(() => document.fonts.ready);
 
-// the cursor: a standard arrow, a pointing hand over a block or a button, a ring on each click
-await page.run(() => {
+// the cursor (CURSOR=1): a standard arrow, a pointing hand over a block or a button, a ring on
+// each click. Off by default: the clip shows the page on its own.
+if (process.env.CURSOR) await page.run(() => {
   const el = document.createElement('div');
   el.innerHTML = `<svg width="22" height="26" viewBox="-1 -1 15 21" class="arrow"><path d="M0 0 L0 17 L4.2 13.1 L7 19.6 L10 18.3 L7.3 11.9 L12.6 11.9 Z" fill="#fff" stroke="#111" stroke-width="1.3" stroke-linejoin="round"/></svg><svg width="26" height="28" viewBox="0 0 20 22" class="hand"><path d="M6 0.8c1 0 1.8 .8 1.8 1.8v6.2c.3-.6 .9-1 1.6-1 1 0 1.8 .8 1.8 1.8v.4c.3-.5 .9-.9 1.6-.9 1 0 1.8 .8 1.8 1.8v.6c.3-.4 .8-.7 1.4-.7 1 0 1.8 .8 1.8 1.8v4.6c0 3.6-2.6 6.4-6.2 6.4H9.9c-1.9 0-3.4-.9-4.4-2.4L1.3 14.6c-.6-.9-.3-2 .6-2.5.8-.5 1.8-.3 2.3.4L4.2 13V2.6C4.2 1.6 5 .8 6 .8z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
   Object.assign(el.style, { position: 'fixed', left: '-60px', top: '-60px', zIndex: 2147483647, pointerEvents: 'none', filter: 'drop-shadow(0 1px 1.5px rgba(0,0,0,.3))', transition: 'transform .08s', transformOrigin: '0 0' });
